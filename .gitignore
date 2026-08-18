@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.env
+msal_token_cache.json
+results/all_sent_emails.xlsx
+results/blocklist.xlsx
+results/*.xlsx
+!results/master_contacts.xlsx
