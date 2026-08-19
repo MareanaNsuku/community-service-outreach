@@ -19,13 +19,6 @@ jobs:
         run: |
           pip install O365 pandas openpyxl python-dotenv msal requests beautifulsoup4 xlsxwriter
 
-      - name: Prepare token from secret
-        env:
-          MSAL_REFRESH_TOKEN: ${{ secrets.MSAL_REFRESH_TOKEN }}
-        run: |
-          mkdir -p o365_token
-          echo "$MSAL_TOKEN_CACHE" > o365_token/o365_token.txt
-
       - name: Run outreach
         env:
           OUTLOOK_CLIENT_ID: ${{ secrets.OUTLOOK_CLIENT_ID }}
