@@ -34,4 +34,4 @@ jobs:
           OUTLOOK_CLIENT_ID: ${{ secrets.OUTLOOK_CLIENT_ID }}
           OUTLOOK_EMAIL: ${{ secrets.OUTLOOK_EMAIL }}
         run: |
-          ./auto_send_all.sh
+          bash auto_send_all.sh
