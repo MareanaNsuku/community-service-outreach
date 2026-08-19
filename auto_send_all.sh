@@ -1,5 +1,5 @@
 #!/bin/bash
-PYTHON="$HOME/Desktop/CommunityServiceOutreach/venv/bin/python"
+PYTHON="python3"
 RESULTS="results"
 mkdir -p "$RESULTS"
 
