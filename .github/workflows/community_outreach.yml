@@ -30,5 +30,6 @@ jobs:
         env:
           OUTLOOK_CLIENT_ID: ${{ secrets.OUTLOOK_CLIENT_ID }}
           OUTLOOK_EMAIL: ${{ secrets.OUTLOOK_EMAIL }}
+          MSAL_TOKEN_CACHE: ${{ secrets.MSAL_TOKEN_CACHE }}
         run: |
           bash auto_send_all.sh
