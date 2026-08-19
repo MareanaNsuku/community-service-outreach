@@ -21,7 +21,7 @@ jobs:
 
       - name: Prepare token from secret
         env:
-          MSAL_TOKEN_CACHE: ${{ secrets.MSAL_TOKEN_CACHE }}
+          MSAL_REFRESH_TOKEN: ${{ secrets.MSAL_REFRESH_TOKEN }}
         run: |
           mkdir -p o365_token
           echo "$MSAL_TOKEN_CACHE" > o365_token/o365_token.txt
