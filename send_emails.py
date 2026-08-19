@@ -64,23 +64,37 @@ def save_cache(cache):
         except: pass
 
 def get_token():
-    cache = load_cache()
-    app = msal.PublicClientApplication(CLIENT_ID, authority=AUTHORITY, token_cache=cache)
-    accounts = app.get_accounts()
-    if accounts:
-        result = app.acquire_token_silent(SCOPES, account=accounts[0])
-        if result and "access_token" in result:
-            save_cache(cache)
-            return result["access_token"]
+    # Try to get token from MSAL_TOKEN_CACHE environment variable (GitHub secret)
+    cache_json = os.getenv("MSAL_TOKEN_CACHE")
+    if cache_json:
+        try:
+            os.makedirs("o365_token", exist_ok=True)
+            with open("o365_token/o365_token.txt", "w") as f:
+                f.write(cache_json)
+        except:
+            pass
+
+    # Use FileSystemTokenBackend with the token file
+    token_backend = FileSystemTokenBackend(token_path=TOKEN_PATH, token_filename="o365_token.txt")
+    account = Account((CLIENT_ID, None), token_backend=token_backend)
+    if account.is_authenticated:
+        return account.connection.get_access_token()
+
+    # If no valid token, fall back to device code flow
+    app = msal.PublicClientApplication(CLIENT_ID, authority=AUTHORITY, token_cache=msal.SerializableTokenCache())
     flow = app.initiate_device_flow(scopes=SCOPES)
     if "user_code" not in flow:
-        raise Exception("Device flow initiation failed")
+        raise Exception("Failed to create device flow")
     print(flow["message"])
     result = app.acquire_token_by_device_flow(flow)
     if "access_token" not in result:
         raise Exception(f"Authentication failed: {result.get('error_description', 'Unknown')}")
-    save_cache(cache)
+    # Save token for future use (optional)
+    os.makedirs(TOKEN_PATH, exist_ok=True)
+    with open(TOKEN_FILE, "w") as f:
+        f.write(json.dumps(result))
     return result["access_token"]
+
 
 def get_attachments():
     return glob.glob(os.path.join(DOCUMENTS_FOLDER, "*.pdf"))
