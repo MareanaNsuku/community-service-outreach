@@ -10,6 +10,7 @@ if TOKEN_CACHE_FROM_ENV:
 import time, os, sys, glob, json, base64, pandas as pd
 from dotenv import load_dotenv
 import msal, requests
+from O365 import Account, FileSystemTokenBackend
 
 load_dotenv()
 CLIENT_ID = os.getenv("OUTLOOK_CLIENT_ID")
