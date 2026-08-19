@@ -2,6 +2,15 @@ name: Community Outreach
 
 on:
   workflow_dispatch:
+    inputs:
+      location:
+        description: 'Location (e.g. Sandton)'
+        required: true
+        default: 'Randburg'
+      category:
+        description: 'Category (e.g. Animal Welfare)'
+        required: true
+        default: 'Sports & Recreation'
 
 jobs:
   send:
@@ -19,10 +28,10 @@ jobs:
         run: |
           pip install O365 pandas openpyxl python-dotenv msal requests beautifulsoup4 xlsxwriter
 
-      - name: Run outreach
+      - name: Run outreach for selected location/category
         env:
           OUTLOOK_CLIENT_ID: ${{ secrets.OUTLOOK_CLIENT_ID }}
           OUTLOOK_EMAIL: ${{ secrets.OUTLOOK_EMAIL }}
           MSAL_REFRESH_TOKEN: ${{ secrets.MSAL_REFRESH_TOKEN }}
         run: |
-          bash auto_send_all.sh
+          bash send_subset.sh "${{ github.event.inputs.location }}" "${{ github.event.inputs.category }}"
