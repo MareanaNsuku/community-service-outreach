@@ -41,27 +41,18 @@ University of Cape Town<br>
 </html>"""
 
 def get_token():
-    """Get an access token using the MSAL token cache provided via environment."""
-    cache_json = os.getenv("MSAL_TOKEN_CACHE")
-    if not cache_json:
-        raise Exception("MSAL_TOKEN_CACHE environment variable not set")
+    """Get an access token using a refresh token from environment."""
+    refresh_token = os.getenv("MSAL_REFRESH_TOKEN")
+    if not refresh_token:
+        raise Exception("MSAL_REFRESH_TOKEN environment variable not set")
 
-    # Deserialize the token cache
-    cache = msal.SerializableTokenCache()
-    cache.deserialize(cache_json)
+    app = msal.PublicClientApplication(CLIENT_ID, authority=AUTHORITY)
+    result = app.acquire_token_by_refresh_token(refresh_token, scopes=SCOPES)
+    if "access_token" in result:
+        return result["access_token"]
+    else:
+        raise Exception(f"Unable to obtain access token from refresh token: {result.get('error_description', 'Unknown')}")
 
-    app = msal.PublicClientApplication(CLIENT_ID, authority=AUTHORITY, token_cache=cache)
-
-    # Try to get token silently from existing account
-    accounts = app.get_accounts()
-    if accounts:
-        result = app.acquire_token_silent(SCOPES, account=accounts[0])
-        if result and "access_token" in result:
-            return result["access_token"]
-
-    # If silent fails, try to use refresh token directly (should not be needed)
-    # But we can raise an informative error
-    raise Exception("Unable to obtain access token from cached credentials. Please refresh the MSAL_TOKEN_CACHE secret.")
 
 def get_attachments():
     """Return list of PDF files in documents folder."""
