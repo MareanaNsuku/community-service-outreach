@@ -140,7 +140,7 @@ def send_emails(data_file):
             print(f"[{i+1}/{len(contacts)}] ❌ {org} – {msg}")
 
         # Be gentle to the server / avoid rate limits
-        time.sleep(2)
+        time.sleep(120)
 
     print("\n" + "="*60)
     print("📋 SEND SUMMARY")
