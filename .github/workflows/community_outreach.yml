@@ -17,8 +17,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install O365 pandas openpyxl python-dotenv msal requests beautifulsoup4 xlsxwriter playwright
-          playwright install --with-deps chromium
+          pip install O365 pandas openpyxl python-dotenv msal requests beautifulsoup4 xlsxwriter
 
       - name: Prepare token from secret
         env:
