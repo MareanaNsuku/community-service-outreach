@@ -4,13 +4,37 @@ on:
   workflow_dispatch:
     inputs:
       location:
-        description: 'Location (e.g. Sandton)'
+        description: 'Select location'
         required: true
         default: 'Randburg'
+        type: choice
+        options:
+          - Randburg
+          - Sandton
+          - Johannesburg
+          - Centurion
+          - Roodepoort
+          - Midrand
+          - Rosebank
+          - Alberton
+          - Edenvale
+          - Soweto
+          - Boksburg
+          - Kempton Park
+          - Krugersdorp
+          - Daveyton
+          - Springs
       category:
-        description: 'Category (e.g. Animal Welfare)'
+        description: 'Select category'
         required: true
         default: 'Sports & Recreation'
+        type: choice
+        options:
+          - Sports & Recreation
+          - Animal Welfare
+          - Environmental
+          - Arts & Culture
+          - Youth & Tutoring
 
 jobs:
   send:
