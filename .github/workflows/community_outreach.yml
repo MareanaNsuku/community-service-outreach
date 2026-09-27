@@ -26,11 +26,12 @@ on:
           - Daveyton
           - Springs
       category:
-        description: 'Select category'
+        description: 'Select category (or All)'
         required: true
-        default: 'Sports & Recreation'
+        default: 'All Categories'
         type: choice
         options:
+          - All Categories
           - Sports & Recreation
           - Animal Welfare
           - Environmental
@@ -40,6 +41,7 @@ on:
 jobs:
   send:
     runs-on: ubuntu-latest
+    timeout-minutes: 350
 
     steps:
       - uses: actions/checkout@v4
@@ -56,13 +58,17 @@ jobs:
         run: |
           pip install O365 pandas openpyxl python-dotenv msal requests beautifulsoup4 xlsxwriter
 
-      - name: Run outreach for selected location/category
+      - name: Run all categories (or single)
         env:
           OUTLOOK_CLIENT_ID: ${{ secrets.OUTLOOK_CLIENT_ID }}
           OUTLOOK_EMAIL: ${{ secrets.OUTLOOK_EMAIL }}
           MSAL_REFRESH_TOKEN: ${{ secrets.MSAL_REFRESH_TOKEN }}
         run: |
-          bash send_subset.sh "${{ github.event.inputs.location }}" "${{ github.event.inputs.category }}"
+          if [ "${{ github.event.inputs.category }}" = "All Categories" ]; then
+            bash send_all_categories.sh "${{ github.event.inputs.location }}"
+          else
+            bash send_subset.sh "${{ github.event.inputs.location }}" "${{ github.event.inputs.category }}"
+          fi
 
       - name: Commit results back to repo
         if: always()
