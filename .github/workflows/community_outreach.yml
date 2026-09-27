@@ -6,9 +6,10 @@ on:
       location:
         description: 'Select location'
         required: true
-        default: 'Randburg'
+        default: 'Cape Town'
         type: choice
         options:
+          - Cape Town
           - Randburg
           - Sandton
           - Johannesburg
@@ -42,6 +43,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -59,3 +63,12 @@ jobs:
           MSAL_REFRESH_TOKEN: ${{ secrets.MSAL_REFRESH_TOKEN }}
         run: |
           bash send_subset.sh "${{ github.event.inputs.location }}" "${{ github.event.inputs.category }}"
+
+      - name: Commit results back to repo
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results/*.xlsx || true
+          git commit -m "Auto: update scraped results and sent log" || echo "No changes to commit"
+          git push || echo "Push skipped"
