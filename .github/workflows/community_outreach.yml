@@ -56,7 +56,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install O365 pandas openpyxl python-dotenv msal requests beautifulsoup4 xlsxwriter
+          pip install O365 pandas openpyxl python-dotenv msal requests beautifulsoup4 xlsxwriter ddgs
 
       - name: Run all categories (or single)
         env:
