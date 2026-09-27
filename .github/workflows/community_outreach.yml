@@ -1,6 +1,9 @@
 name: Community Outreach
 
 on:
+  schedule:
+    # Daily at 06:00 UTC = 08:00 SAST
+    - cron: '0 6 * * *'
   workflow_dispatch:
     inputs:
       location:
@@ -10,9 +13,9 @@ on:
         type: choice
         options:
           - Cape Town
+          - Johannesburg
           - Randburg
           - Sandton
-          - Johannesburg
           - Centurion
           - Roodepoort
           - Midrand
@@ -37,6 +40,11 @@ on:
           - Environmental
           - Arts & Culture
           - Youth & Tutoring
+          - Health & Wellness
+          - Senior Care
+          - Community Development
+          - Women & Family Support
+          - Emergency & Rescue
 
 permissions:
   contents: write
@@ -59,18 +67,29 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install O365 pandas openpyxl python-dotenv msal requests beautifulsoup4 xlsxwriter ddgs
+          pip install O365 pandas openpyxl python-dotenv msal requests beautifulsoup4 xlsxwriter
 
-      - name: Run all categories (or single)
+      - name: Determine run mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "location=Cape Town" >> $GITHUB_OUTPUT
+            echo "category=All Categories" >> $GITHUB_OUTPUT
+          else
+            echo "location=${{ github.event.inputs.location }}" >> $GITHUB_OUTPUT
+            echo "category=${{ github.event.inputs.category }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run outreach
         env:
           OUTLOOK_CLIENT_ID: ${{ secrets.OUTLOOK_CLIENT_ID }}
           OUTLOOK_EMAIL: ${{ secrets.OUTLOOK_EMAIL }}
           MSAL_REFRESH_TOKEN: ${{ secrets.MSAL_REFRESH_TOKEN }}
         run: |
-          if [ "${{ github.event.inputs.category }}" = "All Categories" ]; then
-            bash send_all_categories.sh "${{ github.event.inputs.location }}"
+          if [ "${{ steps.mode.outputs.category }}" = "All Categories" ]; then
+            bash send_all_categories.sh "${{ steps.mode.outputs.location }}"
           else
-            bash send_subset.sh "${{ github.event.inputs.location }}" "${{ github.event.inputs.category }}"
+            bash send_subset.sh "${{ steps.mode.outputs.location }}" "${{ steps.mode.outputs.category }}"
           fi
 
       - name: Commit results back to repo
@@ -79,7 +98,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f results/*.xlsx || true
-          git commit -m "Auto: update scraped results and sent log" || echo "No changes to commit"
-          # Handle race conditions by pulling latest before pushing
+          git commit -m "Auto: $(date -u +%Y-%m-%d) scrape results" || echo "No changes"
           git pull --rebase origin main || true
-          git push || (sleep 5 && git pull --rebase origin main && git push) || echo "Push ultimately failed"
+          git push || (sleep 5 && git pull --rebase origin main && git push) || echo "Push failed"

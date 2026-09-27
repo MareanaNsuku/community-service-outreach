@@ -4,12 +4,6 @@ from bs4 import BeautifulSoup
 from urllib.parse import quote_plus, urljoin
 import pandas as pd
 
-try:
-    from ddgs import DDGS
-    HAS_DDGS = True
-except ImportError:
-    HAS_DDGS = False
-
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                   "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -18,99 +12,112 @@ HEADERS = {
 }
 
 EMAIL_REGEX = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
+BAD_EMAIL_PARTS = ["example.com", "sentry", "wixpress", "domain.com", "test.com", 
+                   "yourdomain", "sentry.io", ".png", ".jpg", ".gif", ".css", ".js",
+                   "support@wordpress", "info@wix", "noreply@", "no-reply@"]
 
 # ============================================================
-# Expanded category search terms (20+ each)
+# EXPANDED CATEGORIES
 # ============================================================
 CATEGORY_TERMS = {
-    "Sports & Recreation": [
-        "sports club", "recreation centre", "youth sports", "athletics club",
-        "football club", "soccer club", "rugby club", "cricket club",
-        "swimming club", "tennis club", "netball club", "hockey club",
-        "basketball club", "cycling club", "running club", "gymnastics",
-        "martial arts", "surfing club", "rowing club", "sports development",
-        "community sports", "sports academy", "youth football",
-    ],
-    "Animal Welfare": [
-        "animal shelter", "SPCA", "animal rescue", "wildlife rehabilitation",
-        "pet rescue", "animal welfare", "animal anti-cruelty",
-        "dog rescue", "cat rescue", "bird sanctuary", "wildlife sanctuary",
-        "animal hospital", "animal clinic", "animal protection",
-        "marine animal rescue", "primate rescue", "horse rescue",
-        "farm animal sanctuary", "animal foster", "animal adoption",
-        "conservation animal", "wildlife trust",
-    ],
-    "Environmental": [
-        "environmental organisation", "conservation trust", "recycling initiative",
-        "community garden", "clean-up crew", "wetland guardians",
-        "tree planting", "climate action", "eco warriors", "sustainability",
-        "environmental education", "green initiative", "beach cleanup",
-        "river cleanup", "urban farming", "permaculture", "food garden",
-        "reforestation", "wildlife conservation", "nature reserve",
-        "eco club", "environmental justice", "zero waste",
-    ],
-    "Arts & Culture": [
-        "art centre", "community theatre", "dance company", "music academy",
-        "art gallery", "cultural centre", "photographic society", "choir",
-        "youth orchestra", "craft market", "poetry slam", "art studio",
-        "theatre company", "drama society", "music school", "ballet school",
-        "art project", "community art", "mural project", "film society",
-        "writers guild", "cultural trust", "heritage organisation",
-    ],
-    "Youth & Tutoring": [
-        "youth centre", "tutoring centre", "after-school programme",
-        "literacy project", "homework club", "youth development",
-        "leadership academy", "mentorship programme", "reading project",
-        "educational support", "youth empowerment", "youth skills",
-        "study support", "matric support", "career guidance",
-        "youth outreach", "community learning", "youth programme",
-        "peer tutoring", "after school care", "youth trust",
-        "educational ngo", "school support",
-    ],
+    "Sports & Recreation": ["sports club", "recreation centre", "youth sports", "athletics club",
+        "football club", "soccer club", "rugby club", "cricket club", "swimming club",
+        "tennis club", "netball club", "hockey club", "basketball club", "cycling club",
+        "running club", "gymnastics", "martial arts", "sports development"],
+    "Animal Welfare": ["animal shelter", "SPCA", "animal rescue", "wildlife rehabilitation",
+        "pet rescue", "animal welfare", "animal anti-cruelty", "dog rescue", "cat rescue",
+        "bird sanctuary", "wildlife sanctuary", "animal hospital", "animal clinic",
+        "animal protection", "marine animal rescue", "horse rescue", "farm animal sanctuary"],
+    "Environmental": ["environmental organisation", "conservation trust", "recycling initiative",
+        "community garden", "clean-up crew", "wetland guardians", "tree planting",
+        "climate action", "eco warriors", "sustainability", "environmental education",
+        "green initiative", "beach cleanup", "river cleanup", "urban farming",
+        "permaculture", "reforestation", "nature reserve", "zero waste"],
+    "Arts & Culture": ["art centre", "community theatre", "dance company", "music academy",
+        "art gallery", "cultural centre", "photographic society", "choir", "youth orchestra",
+        "craft market", "poetry slam", "art studio", "theatre company", "drama society",
+        "music school", "ballet school", "art project", "community art", "film society"],
+    "Youth & Tutoring": ["youth centre", "tutoring centre", "after-school programme",
+        "literacy project", "homework club", "youth development", "leadership academy",
+        "mentorship programme", "reading project", "educational support", "youth empowerment",
+        "youth skills", "study support", "matric support", "career guidance",
+        "youth outreach", "community learning", "peer tutoring"],
+    
+    # ============================================================
+    # NEW CATEGORIES
+    # ============================================================
+    "Health & Wellness": ["community clinic", "hospice", "mental health support",
+        "health outreach", "primary health care", "wellness centre", "counselling service",
+        "rehabilitation centre", "health NGO", "medical charity", "dental clinic",
+        "HIV support", "TB clinic", "maternal health", "child health clinic",
+        "palliative care", "trauma centre", "rape crisis centre"],
+    
+    "Senior Care": ["old age home", "retirement village", "senior centre",
+        "elderly care", "frail care", "aged care association", "senior citizen club",
+        "meals on wheels", "elderly support", "old age service", "senior outreach",
+        "golden age club", "pensioner support"],
+    
+    "Community Development": ["community centre", "civic organisation",
+        "neighbourhood watch", "community forum", "residents association",
+        "community development", "community upliftment", "civic association",
+        "community outreach", "community trust", "community project",
+        "community improvement", "ward committee"],
+    
+    "Women & Family Support": ["women shelter", "women empowerment",
+        "gender-based violence support", "family support", "single mother support",
+        "women development", "women outreach", "family counselling",
+        "abused women support", "women resource centre", "safe house",
+        "family violence centre", "women's health"],
+    
+    "Emergency & Rescue": ["fire brigade volunteer", "emergency services",
+        "sea rescue", "mountain rescue", "disaster relief", "first aid",
+        "ambulance volunteer", "search and rescue", "emergency response",
+        "civil defence", "disaster management", "crisis response"],
 }
 
-# ============================================================
-# Suburb breakdowns for major cities (maximises coverage)
-# ============================================================
+# Suburbs for major cities
 CITY_SUBURBS = {
-    "Cape Town": [
-        "Cape Town CBD", "Sea Point", "Green Point", "Woodstock", "Observatory",
-        "Salt River", "Mowbray", "Rondebosch", "Claremont", "Wynberg",
-        "Athlone", "Bellville", "Parow", "Goodwood", "Milnerton",
-        "Table View", "Durbanville", "Khayelitsha", "Mitchells Plain",
-        "Gugulethu", "Nyanga", "Langa", "Muizenberg", "Fish Hoek",
-        "Hout Bay", "Retreat", "Grassy Park", "Lotus River", "Philippi",
-    ],
-    "Johannesburg": [
-        "Johannesburg CBD", "Sandton", "Randburg", "Rosebank", "Soweto",
-        "Midrand", "Roodepoort", "Alexandra", "Braamfontein", "Maboneng",
-        "Fourways", "Bedfordview", "Kempton Park", "Edenvale",
-    ],
-    "Randburg": ["Ferndale", "Bryanston", "Olivedale", "Northgate", "Kensington", "Linden"],
+    "Cape Town": ["Cape Town CBD", "Sea Point", "Green Point", "Woodstock",
+        "Observatory", "Salt River", "Mowbray", "Rondebosch", "Claremont", "Wynberg",
+        "Athlone", "Bellville", "Parow", "Goodwood", "Milnerton", "Table View",
+        "Durbanville", "Khayelitsha", "Mitchells Plain", "Gugulethu"],
+    "Johannesburg": ["Johannesburg CBD", "Sandton", "Randburg", "Rosebank",
+        "Soweto", "Midrand", "Roodepoort", "Alexandra", "Braamfontein", "Maboneng"],
 }
 
-# ============================================================
-# Helper: fetch email from website
-# ============================================================
-def fetch_email_from_site(url):
+def is_bad_email(email):
+    el = email.lower()
+    return any(bad in el for bad in BAD_EMAIL_PARTS)
+
+def fetch_email_from_site(url, timeout=6):
     if not url or not url.startswith("http"):
         return ""
+    # Skip known directories (their emails are not the org's)
+    skip_domains = ["infoisinfo", "yellosa", "forgood", "ngopulse", "cylex", "hotfrog",
+                    "brabys", "yellowpages", "facebook.com", "twitter.com",
+                    "instagram.com", "linkedin.com", "youtube.com"]
+    if any(d in url.lower() for d in skip_domains):
+        return ""
     try:
-        r = requests.get(url, headers=HEADERS, timeout=8, allow_redirects=True)
+        r = requests.get(url, headers=HEADERS, timeout=timeout, allow_redirects=True)
+        if r.status_code != 200:
+            return ""
         emails = EMAIL_REGEX.findall(r.text)
-        emails = [e for e in emails if not any(
-            bad in e.lower() for bad in ["example.com", "sentry", "wixpress", ".png", ".jpg", ".gif", "domain.com"]
-        )]
+        emails = [e for e in emails if not is_bad_email(e)]
         if emails:
+            # Prefer info@, contact@, admin@
+            for pref in ["info@", "contact@", "admin@", "office@", "hello@"]:
+                for e in emails:
+                    if e.lower().startswith(pref):
+                        return e
             return emails[0]
-        # Try common contact pages
-        for slug in ["/contact", "/contact-us", "/about", "/about-us", "/get-in-touch", "/reach-us", "/team"]:
+        # Try contact pages
+        for slug in ["/contact", "/contact-us", "/about", "/about-us",
+                     "/get-in-touch", "/reach-us", "/team", "/kontak"]:
             try:
-                r2 = requests.get(urljoin(url, slug), headers=HEADERS, timeout=6)
+                r2 = requests.get(urljoin(url, slug), headers=HEADERS, timeout=4)
                 emails2 = EMAIL_REGEX.findall(r2.text)
-                emails2 = [e for e in emails2 if not any(
-                    bad in e.lower() for bad in ["example.com", "sentry", "wixpress", "domain.com"]
-                )]
+                emails2 = [e for e in emails2 if not is_bad_email(e)]
                 if emails2:
                     return emails2[0]
             except Exception:
@@ -119,71 +126,39 @@ def fetch_email_from_site(url):
         pass
     return ""
 
-# ============================================================
-# SOURCE 1: DuckDuckGo HTML (direct, no library)
-# ============================================================
-def scrape_duckduckgo(city, term, suburb=None):
-    """Direct HTTP to html.duckduckgo.com — works from GitHub IPs."""
+# ------------------ Search engines ------------------
+def scrape_bing(city, term, suburb=None):
     results = []
     query_loc = suburb if suburb else city
-    queries = [
-        f"{term} {query_loc} contact email",
-        f"{term} {query_loc} site:org.za",
-    ]
-    for q in queries:
-        try:
-            r = requests.post(
-                "https://html.duckduckgo.com/html/",
-                data={"q": q},
-                headers=HEADERS,
-                timeout=3,
-            )
-            if r.status_code != 200:
+    try:
+        url = f"https://www.bing.com/search?q={quote_plus(term + ' ' + query_loc + ' contact email')}"
+        r = requests.get(url, headers=HEADERS, timeout=10)
+        soup = BeautifulSoup(r.text, "html.parser")
+        for li in soup.select("li.b_algo"):
+            h2 = li.select_one("h2 a")
+            if not h2:
                 continue
-            soup = BeautifulSoup(r.text, "html.parser")
-            for result in soup.select(".result"):
-                title_el = result.select_one(".result__a")
-                if not title_el:
-                    continue
-                name = title_el.get_text(strip=True)
-                href = title_el.get("href", "")
-                if "uddg=" in href:
-                    from urllib.parse import unquote, urlparse, parse_qs
-                    qs = parse_qs(urlparse(href).query)
-                    href = qs.get("uddg", [href])[0]
-                    href = unquote(href)
-                snippet_el = result.select_one(".result__snippet")
-                snippet = snippet_el.get_text() if snippet_el else ""
-                emails = EMAIL_REGEX.findall(snippet)
-                email = emails[0] if emails else ""
-                if not name or len(name) < 3:
-                    continue
-                results.append({
-                    "Organisation Name": name[:120],
-                    "Category": None,
-                    "Location": city,
-                    "Email": email,
-                    "Phone": "",
-                    "Website": href,
-                    "Address": suburb or city,
-                    "Source": "DuckDuckGo",
-                })
-            time.sleep(random.uniform(1.0, 2.0))
-        except Exception as e:
-            print(f"  [DDG] {e}")
-            continue
+            name = h2.get_text(strip=True)
+            link = h2.get("href", "")
+            snippet = li.select_one(".b_caption p")
+            snippet_text = snippet.get_text() if snippet else ""
+            emails = EMAIL_REGEX.findall(snippet_text)
+            email = emails[0] if emails and not is_bad_email(emails[0]) else ""
+            if not name or len(name) < 3:
+                continue
+            results.append({"Organisation Name": name[:120], "Category": None,
+                "Location": city, "Email": email, "Phone": "", "Website": link,
+                "Address": suburb or city, "Source": "Bing"})
+    except Exception:
+        pass
     return results
 
-
-# ============================================================
-# SOURCE 1b: Mojeek (independent index)
-# ============================================================
 def scrape_mojeek(city, term, suburb=None):
     results = []
     query_loc = suburb if suburb else city
     try:
         url = f"https://www.mojeek.com/search?q={quote_plus(term + ' ' + query_loc + ' contact')}"
-        r = requests.get(url, headers=HEADERS, timeout=12)
+        r = requests.get(url, headers=HEADERS, timeout=10)
         soup = BeautifulSoup(r.text, "html.parser")
         for li in soup.select("li.result"):
             a = li.select_one("a.title, h2 a")
@@ -194,26 +169,16 @@ def scrape_mojeek(city, term, suburb=None):
             snippet_el = li.select_one("p.s")
             snippet = snippet_el.get_text() if snippet_el else ""
             emails = EMAIL_REGEX.findall(snippet)
-            email = emails[0] if emails else ""
-            results.append({
-                "Organisation Name": name[:120],
-                "Category": None,
-                "Location": city,
-                "Email": email,
-                "Phone": "",
-                "Website": href,
-                "Address": suburb or city,
-                "Source": "Mojeek",
-            })
-    except Exception as e:
-        print(f"  [Mojeek] {e}")
+            email = emails[0] if emails and not is_bad_email(emails[0]) else ""
+            if not name or len(name) < 3:
+                continue
+            results.append({"Organisation Name": name[:120], "Category": None,
+                "Location": city, "Email": email, "Phone": "", "Website": href,
+                "Address": suburb or city, "Source": "Mojeek"})
+    except Exception:
+        pass
     return results
 
-
-
-# ============================================================
-# SOURCE 1c: Ecosia (Google-backed, works from GitHub)
-# ============================================================
 def scrape_ecosia(city, term, suburb=None):
     results = []
     query_loc = suburb if suburb else city
@@ -222,7 +187,7 @@ def scrape_ecosia(city, term, suburb=None):
         r = requests.get(url, headers=HEADERS, timeout=8)
         soup = BeautifulSoup(r.text, "html.parser")
         for result in soup.select("article.result, .result-body"):
-            a = result.select_one("a.result__link, a[data-test-id='result-link'], h2 a")
+            a = result.select_one("a.result__link, h2 a")
             if not a:
                 continue
             name = a.get_text(strip=True)
@@ -230,27 +195,16 @@ def scrape_ecosia(city, term, suburb=None):
             snippet_el = result.select_one(".result__description, p")
             snippet = snippet_el.get_text() if snippet_el else ""
             emails = EMAIL_REGEX.findall(snippet)
-            email = emails[0] if emails else ""
+            email = emails[0] if emails and not is_bad_email(emails[0]) else ""
             if not name or len(name) < 3:
                 continue
-            results.append({
-                "Organisation Name": name[:120],
-                "Category": None,
-                "Location": city,
-                "Email": email,
-                "Phone": "",
-                "Website": href,
-                "Address": suburb or city,
-                "Source": "Ecosia",
-            })
-    except Exception as e:
-        print(f"  [Ecosia] {e}")
+            results.append({"Organisation Name": name[:120], "Category": None,
+                "Location": city, "Email": email, "Phone": "", "Website": href,
+                "Address": suburb or city, "Source": "Ecosia"})
+    except Exception:
+        pass
     return results
 
-
-# ============================================================
-# SOURCE 1d: Startpage (Google proxy, works from GitHub)
-# ============================================================
 def scrape_startpage(city, term, suburb=None):
     results = []
     query_loc = suburb if suburb else city
@@ -267,221 +221,37 @@ def scrape_startpage(city, term, suburb=None):
             snippet_el = result.select_one(".w-gl__description, p")
             snippet = snippet_el.get_text() if snippet_el else ""
             emails = EMAIL_REGEX.findall(snippet)
-            email = emails[0] if emails else ""
+            email = emails[0] if emails and not is_bad_email(emails[0]) else ""
             if not name or len(name) < 3:
                 continue
-            results.append({
-                "Organisation Name": name[:120],
-                "Category": None,
-                "Location": city,
-                "Email": email,
-                "Phone": "",
-                "Website": href,
-                "Address": suburb or city,
-                "Source": "Startpage",
-            })
-    except Exception as e:
-        print(f"  [Startpage] {e}")
-    return results
-
-
-# ============================================================
-# SOURCE 2: Bing Search
-# ============================================================
-def scrape_bing(city, term, suburb=None):
-    results = []
-    query_loc = suburb if suburb else city
-    try:
-        url = f"https://www.bing.com/search?q={quote_plus(term + ' ' + query_loc + ' email contact')}"
-        r = requests.get(url, headers=HEADERS, timeout=12)
-        soup = BeautifulSoup(r.text, "html.parser")
-        for li in soup.select("li.b_algo"):
-            h2 = li.select_one("h2 a")
-            if not h2:
-                continue
-            name = h2.get_text(strip=True)
-            link = h2.get("href", "")
-            snippet = li.select_one(".b_caption p")
-            snippet_text = snippet.get_text() if snippet else ""
-            emails = EMAIL_REGEX.findall(snippet_text)
-            email = emails[0] if emails else ""
-            results.append({
-                "Organisation Name": name[:120],
-                "Category": None,
-                "Location": city,
-                "Email": email,
-                "Phone": "",
-                "Website": link,
-                "Address": suburb or city,
-                "Source": "Bing",
-            })
-    except Exception as e:
-        print(f"  [Bing] {e}")
-    return results
-
-# ============================================================
-# SOURCE 3: Infoisinfo
-# ============================================================
-def scrape_infoisinfo(city, term):
-    results = []
-    slug = city.lower().replace(" ", "-")
-    url = f"https://{slug}.infoisinfo.co.za/search/{quote_plus(term.replace(' ', '-'))}"
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=12)
-        soup = BeautifulSoup(r.text, "html.parser")
-        for card in soup.select(".result, .listing, .company, .search-result"):
-            name_el = card.select_one("h2, h3, .name, a.title")
-            name = name_el.get_text(strip=True) if name_el else ""
-            if not name or len(name) < 3:
-                continue
-            link = name_el.get("href") if name_el and name_el.get("href") else ""
-            if link and not link.startswith("http"):
-                link = urljoin(url, link)
-            phone_el = card.select_one(".phone, .tel, [class*='phone']")
-            phone = phone_el.get_text(strip=True) if phone_el else ""
-            addr_el = card.select_one(".address, .location")
-            addr = addr_el.get_text(strip=True) if addr_el else ""
-            results.append({
-                "Organisation Name": name, "Category": None, "Location": city,
-                "Email": "", "Phone": phone, "Website": link, "Address": addr,
-                "Source": "Infoisinfo",
-            })
+            results.append({"Organisation Name": name[:120], "Category": None,
+                "Location": city, "Email": email, "Phone": "", "Website": href,
+                "Address": suburb or city, "Source": "Startpage"})
     except Exception:
         pass
     return results
 
-# ============================================================
-# SOURCE 4: NGO Pulse
-# ============================================================
-def scrape_ngopulse(city, term):
-    results = []
-    try:
-        url = f"https://www.ngopulse.org/directory?search={quote_plus(term)}"
-        r = requests.get(url, headers=HEADERS, timeout=12)
-        soup = BeautifulSoup(r.text, "html.parser")
-        for card in soup.select(".views-row, .directory-item"):
-            name_el = card.select_one(".title a, h2 a, a.title")
-            name = name_el.get_text(strip=True) if name_el else ""
-            if not name:
-                continue
-            link = name_el.get("href") if name_el else ""
-            if link and not link.startswith("http"):
-                link = "https://www.ngopulse.org" + link
-            results.append({
-                "Organisation Name": name, "Category": None, "Location": city,
-                "Email": "", "Phone": "", "Website": link, "Address": "",
-                "Source": "NGO Pulse",
-            })
-    except Exception:
-        pass
-    return results
-
-# ============================================================
-# SOURCE 5: ForGood
-# ============================================================
-def scrape_forgood(city, term):
-    results = []
-    try:
-        url = f"https://www.forgood.co.za/volunteer/opportunities?location={quote_plus(city)}"
-        r = requests.get(url, headers=HEADERS, timeout=12)
-        soup = BeautifulSoup(r.text, "html.parser")
-        for card in soup.select(".opportunity-card, .listing-card, .org-card"):
-            name_el = card.select_one("h3, h4, .org-name, a.title")
-            name = name_el.get_text(strip=True) if name_el else ""
-            if not name or len(name) < 3:
-                continue
-            results.append({
-                "Organisation Name": name, "Category": None, "Location": city,
-                "Email": "", "Phone": "", "Website": "", "Address": "",
-                "Source": "ForGood",
-            })
-    except Exception:
-        pass
-    return results
-
-# ============================================================
-# SOURCE 6: Cylex South Africa
-# ============================================================
-def scrape_cylex(city, term):
-    results = []
-    try:
-        url = f"https://www.cylex.co.za/s?q={quote_plus(term)}&loc={quote_plus(city)}"
-        r = requests.get(url, headers=HEADERS, timeout=12)
-        soup = BeautifulSoup(r.text, "html.parser")
-        for card in soup.select(".result-item, .listing, .company"):
-            name_el = card.select_one("h2, h3, a.name")
-            name = name_el.get_text(strip=True) if name_el else ""
-            if not name or len(name) < 3:
-                continue
-            phone_el = card.select_one(".phone, .tel")
-            phone = phone_el.get_text(strip=True) if phone_el else ""
-            results.append({
-                "Organisation Name": name, "Category": None, "Location": city,
-                "Email": "", "Phone": phone, "Website": "", "Address": "",
-                "Source": "Cylex",
-            })
-    except Exception:
-        pass
-    return results
-
-# ============================================================
-# SOURCE 7: Hotfrog SA
-# ============================================================
-def scrape_hotfrog(city, term):
-    results = []
-    try:
-        url = f"https://www.hotfrog.co.za/search/{quote_plus(city)}/{quote_plus(term)}"
-        r = requests.get(url, headers=HEADERS, timeout=12)
-        soup = BeautifulSoup(r.text, "html.parser")
-        for card in soup.select(".business-card, .listing, .result"):
-            name_el = card.select_one("h3, h2, .name, a")
-            name = name_el.get_text(strip=True) if name_el else ""
-            if not name or len(name) < 3:
-                continue
-            results.append({
-                "Organisation Name": name, "Category": None, "Location": city,
-                "Email": "", "Phone": "", "Website": "", "Address": "",
-                "Source": "Hotfrog",
-            })
-    except Exception:
-        pass
-    return results
-
-# ============================================================
-# Main scraper – city × suburbs × terms
-# ============================================================
+# ------------------ Main orchestration ------------------
 def scrape_all(city, category):
-    terms = CATEGORY_TERMS.get(category, [category])
-    # Limit terms per suburb to keep runtime reasonable
-    terms = terms[:15]
-    suburbs = CITY_SUBURBS.get(city, [None])[:10]  # top 10 suburbs
-
+    terms = CATEGORY_TERMS.get(category, [category])[:15]
+    suburbs = CITY_SUBURBS.get(city, [None])[:10]
+    
     all_results = []
-    total_searches = len(terms) * len(suburbs)
+    total = len(terms) * len(suburbs)
     counter = 0
-
+    
     for suburb in suburbs:
         for term in terms:
             counter += 1
             loc_label = suburb if suburb else city
-            print(f"  [{counter}/{total_searches}] '{term}' in {loc_label}")
-
+            print(f"  [{counter}/{total}] '{term}' in {loc_label}")
+            
             all_results += scrape_bing(city, term, suburb)
             all_results += scrape_mojeek(city, term, suburb)
             all_results += scrape_ecosia(city, term, suburb)
             all_results += scrape_startpage(city, term, suburb)
-            all_results += scrape_duckduckgo(city, term, suburb)
-
-            # Hit directory sources only once per term (not per suburb)
-            if suburb is None or suburbs.index(suburb) == 0:
-                all_results += scrape_infoisinfo(city, term)
-                all_results += scrape_ngopulse(city, term)
-                all_results += scrape_forgood(city, term)
-                all_results += scrape_cylex(city, term)
-                all_results += scrape_hotfrog(city, term)
-
-            time.sleep(random.uniform(0.8, 1.8))
-
+            time.sleep(random.uniform(0.4, 1.0))
+    
     # Deduplicate
     seen = set()
     unique = []
@@ -492,10 +262,10 @@ def scrape_all(city, category):
         seen.add(key)
         r["Category"] = category
         unique.append(r)
-
+    
     print(f"  -> {len(unique)} unique organisations found")
-
-    # Enrich emails
+    
+    # Aggressive email enrichment
     print(f"  -> Enriching emails from websites...")
     enriched_count = 0
     for i, r in enumerate(unique):
@@ -504,29 +274,27 @@ def scrape_all(city, category):
             if email:
                 r["Email"] = email
                 enriched_count += 1
-        if (i + 1) % 10 == 0:
-            print(f"    [{i+1}/{len(unique)}] enriched so far: {enriched_count}")
-        time.sleep(0.2)
-
+        # Show progress every 25
+        if (i + 1) % 25 == 0:
+            print(f"    [{i+1}/{len(unique)}] enriched: {enriched_count}")
+        # Faster enrichment
+        if not r["Email"]:
+            time.sleep(0.1)
+    
     print(f"  -> Enriched {enriched_count} emails from websites")
     return unique
-
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print("Usage: python scraper.py <city> <category>")
         sys.exit(1)
-    city = sys.argv[1]
-    category = sys.argv[2]
-
+    city, category = sys.argv[1], sys.argv[2]
     print(f"🔍 Intensive scrape: {category} in {city}")
     results = scrape_all(city, category)
-
     os.makedirs("results", exist_ok=True)
     safe_city = city.replace(" ", "_")
     safe_cat = category.replace(" ", "_").replace("&", "and")
     out = f"results/scraped_{safe_city}_{safe_cat}.xlsx"
-
     df = pd.DataFrame(results)
     cols = ["Organisation Name", "Category", "Location", "Email", "Phone", "Website", "Address", "Source"]
     for c in cols:
