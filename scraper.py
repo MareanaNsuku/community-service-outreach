@@ -120,46 +120,93 @@ def fetch_email_from_site(url):
     return ""
 
 # ============================================================
-# SOURCE 1: DuckDuckGo (primary – best coverage)
+# SOURCE 1: DuckDuckGo HTML (direct, no library)
 # ============================================================
 def scrape_duckduckgo(city, term, suburb=None):
+    """Direct HTTP to html.duckduckgo.com — works from GitHub IPs."""
     results = []
-    if not HAS_DDGS:
-        return results
     query_loc = suburb if suburb else city
     queries = [
-        f"{term} {query_loc} email contact",
+        f"{term} {query_loc} contact email",
         f"{term} {query_loc} site:org.za",
-        f"{term} {query_loc} site:co.za email",
     ]
-    try:
-        with DDGS() as ddgs:
-            for q in queries:
-                try:
-                    for r in ddgs.text(q, max_results=20):
-                        title = r.get("title", "").strip()
-                        body = r.get("body", "")
-                        href = r.get("href", "")
-                        if not title or len(title) < 3:
-                            continue
-                        # Extract email from snippet
-                        emails = EMAIL_REGEX.findall(body)
-                        email = emails[0] if emails else ""
-                        results.append({
-                            "Organisation Name": title[:120],
-                            "Category": None,
-                            "Location": city,
-                            "Email": email,
-                            "Phone": "",
-                            "Website": href,
-                            "Address": suburb or city,
-                            "Source": "DuckDuckGo",
-                        })
-                    time.sleep(random.uniform(0.5, 1.5))
-                except Exception:
+    for q in queries:
+        try:
+            r = requests.post(
+                "https://html.duckduckgo.com/html/",
+                data={"q": q},
+                headers=HEADERS,
+                timeout=15,
+            )
+            if r.status_code != 200:
+                continue
+            soup = BeautifulSoup(r.text, "html.parser")
+            for result in soup.select(".result"):
+                title_el = result.select_one(".result__a")
+                if not title_el:
                     continue
+                name = title_el.get_text(strip=True)
+                href = title_el.get("href", "")
+                if "uddg=" in href:
+                    from urllib.parse import unquote, urlparse, parse_qs
+                    qs = parse_qs(urlparse(href).query)
+                    href = qs.get("uddg", [href])[0]
+                    href = unquote(href)
+                snippet_el = result.select_one(".result__snippet")
+                snippet = snippet_el.get_text() if snippet_el else ""
+                emails = EMAIL_REGEX.findall(snippet)
+                email = emails[0] if emails else ""
+                if not name or len(name) < 3:
+                    continue
+                results.append({
+                    "Organisation Name": name[:120],
+                    "Category": None,
+                    "Location": city,
+                    "Email": email,
+                    "Phone": "",
+                    "Website": href,
+                    "Address": suburb or city,
+                    "Source": "DuckDuckGo",
+                })
+            time.sleep(random.uniform(1.0, 2.0))
+        except Exception as e:
+            print(f"  [DDG] {e}")
+            continue
+    return results
+
+
+# ============================================================
+# SOURCE 1b: Mojeek (independent index)
+# ============================================================
+def scrape_mojeek(city, term, suburb=None):
+    results = []
+    query_loc = suburb if suburb else city
+    try:
+        url = f"https://www.mojeek.com/search?q={quote_plus(term + ' ' + query_loc + ' contact')}"
+        r = requests.get(url, headers=HEADERS, timeout=12)
+        soup = BeautifulSoup(r.text, "html.parser")
+        for li in soup.select("li.result"):
+            a = li.select_one("a.title, h2 a")
+            if not a:
+                continue
+            name = a.get_text(strip=True)
+            href = a.get("href", "")
+            snippet_el = li.select_one("p.s")
+            snippet = snippet_el.get_text() if snippet_el else ""
+            emails = EMAIL_REGEX.findall(snippet)
+            email = emails[0] if emails else ""
+            results.append({
+                "Organisation Name": name[:120],
+                "Category": None,
+                "Location": city,
+                "Email": email,
+                "Phone": "",
+                "Website": href,
+                "Address": suburb or city,
+                "Source": "Mojeek",
+            })
     except Exception as e:
-        print(f"  [DDG] {e}")
+        print(f"  [Mojeek] {e}")
     return results
 
 # ============================================================
@@ -344,6 +391,7 @@ def scrape_all(city, category):
             print(f"  [{counter}/{total_searches}] '{term}' in {loc_label}")
 
             all_results += scrape_duckduckgo(city, term, suburb)
+            all_results += scrape_mojeek(city, term, suburb)
             all_results += scrape_bing(city, term, suburb)
 
             # Hit directory sources only once per term (not per suburb)
