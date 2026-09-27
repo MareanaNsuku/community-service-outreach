@@ -3,7 +3,7 @@ name: Community Outreach
 on:
   schedule:
     # Daily at 06:00 UTC = 08:00 SAST
-    - cron: '0 6 * * *'
+    - cron: '0 6,18 * * *'
   workflow_dispatch:
     inputs:
       location:
