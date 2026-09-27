@@ -87,7 +87,14 @@ jobs:
           MSAL_REFRESH_TOKEN: ${{ secrets.MSAL_REFRESH_TOKEN }}
         run: |
           if [ "${{ steps.mode.outputs.category }}" = "All Categories" ]; then
-            bash send_all_categories.sh "${{ steps.mode.outputs.location }}"
+            HOUR=$(date -u +%H)
+            if [ "$HOUR" -lt 12 ]; then
+              SLOT="morning"
+            else
+              SLOT="evening"
+            fi
+            echo "UTC hour: $HOUR → using slot: $SLOT"
+            bash send_all_categories.sh "${{ steps.mode.outputs.location }}" "$SLOT"
           else
             bash send_subset.sh "${{ steps.mode.outputs.location }}" "${{ steps.mode.outputs.category }}"
           fi
