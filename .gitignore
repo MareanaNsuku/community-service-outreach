@@ -3,7 +3,11 @@ __pycache__/
 *.pyc
 .env
 msal_token_cache.json
+o365_token/
+
+# Ignore personal files but allow scraped/auto results
 results/all_sent_emails.xlsx
 results/blocklist.xlsx
-results/*.xlsx
+!results/scraped_*.xlsx
+!results/auto_*.xlsx
 !results/master_contacts.xlsx
