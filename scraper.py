@@ -136,7 +136,7 @@ def scrape_duckduckgo(city, term, suburb=None):
                 "https://html.duckduckgo.com/html/",
                 data={"q": q},
                 headers=HEADERS,
-                timeout=15,
+                timeout=3,
             )
             if r.status_code != 200:
                 continue
@@ -208,6 +208,82 @@ def scrape_mojeek(city, term, suburb=None):
     except Exception as e:
         print(f"  [Mojeek] {e}")
     return results
+
+
+
+# ============================================================
+# SOURCE 1c: Ecosia (Google-backed, works from GitHub)
+# ============================================================
+def scrape_ecosia(city, term, suburb=None):
+    results = []
+    query_loc = suburb if suburb else city
+    try:
+        url = f"https://www.ecosia.org/search?q={quote_plus(term + ' ' + query_loc + ' contact')}"
+        r = requests.get(url, headers=HEADERS, timeout=8)
+        soup = BeautifulSoup(r.text, "html.parser")
+        for result in soup.select("article.result, .result-body"):
+            a = result.select_one("a.result__link, a[data-test-id='result-link'], h2 a")
+            if not a:
+                continue
+            name = a.get_text(strip=True)
+            href = a.get("href", "")
+            snippet_el = result.select_one(".result__description, p")
+            snippet = snippet_el.get_text() if snippet_el else ""
+            emails = EMAIL_REGEX.findall(snippet)
+            email = emails[0] if emails else ""
+            if not name or len(name) < 3:
+                continue
+            results.append({
+                "Organisation Name": name[:120],
+                "Category": None,
+                "Location": city,
+                "Email": email,
+                "Phone": "",
+                "Website": href,
+                "Address": suburb or city,
+                "Source": "Ecosia",
+            })
+    except Exception as e:
+        print(f"  [Ecosia] {e}")
+    return results
+
+
+# ============================================================
+# SOURCE 1d: Startpage (Google proxy, works from GitHub)
+# ============================================================
+def scrape_startpage(city, term, suburb=None):
+    results = []
+    query_loc = suburb if suburb else city
+    try:
+        url = f"https://www.startpage.com/sp/search?query={quote_plus(term + ' ' + query_loc + ' contact')}"
+        r = requests.get(url, headers=HEADERS, timeout=8)
+        soup = BeautifulSoup(r.text, "html.parser")
+        for result in soup.select(".w-gl__result, .result"):
+            a = result.select_one("a.w-gl__result-title, h3 a")
+            if not a:
+                continue
+            name = a.get_text(strip=True)
+            href = a.get("href", "")
+            snippet_el = result.select_one(".w-gl__description, p")
+            snippet = snippet_el.get_text() if snippet_el else ""
+            emails = EMAIL_REGEX.findall(snippet)
+            email = emails[0] if emails else ""
+            if not name or len(name) < 3:
+                continue
+            results.append({
+                "Organisation Name": name[:120],
+                "Category": None,
+                "Location": city,
+                "Email": email,
+                "Phone": "",
+                "Website": href,
+                "Address": suburb or city,
+                "Source": "Startpage",
+            })
+    except Exception as e:
+        print(f"  [Startpage] {e}")
+    return results
+
 
 # ============================================================
 # SOURCE 2: Bing Search
@@ -390,9 +466,11 @@ def scrape_all(city, category):
             loc_label = suburb if suburb else city
             print(f"  [{counter}/{total_searches}] '{term}' in {loc_label}")
 
-            all_results += scrape_duckduckgo(city, term, suburb)
-            all_results += scrape_mojeek(city, term, suburb)
             all_results += scrape_bing(city, term, suburb)
+            all_results += scrape_mojeek(city, term, suburb)
+            all_results += scrape_ecosia(city, term, suburb)
+            all_results += scrape_startpage(city, term, suburb)
+            all_results += scrape_duckduckgo(city, term, suburb)
 
             # Hit directory sources only once per term (not per suburb)
             if suburb is None or suburbs.index(suburb) == 0:
