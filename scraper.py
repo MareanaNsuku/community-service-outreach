@@ -8,17 +8,31 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                   "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept-Language": "en-ZA,en;q=0.9",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 }
 
 EMAIL_REGEX = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
-BAD_EMAIL_PARTS = ["example.com", "sentry", "wixpress", "domain.com", "test.com", 
-                   "yourdomain", "sentry.io", ".png", ".jpg", ".gif", ".css", ".js",
-                   "support@wordpress", "info@wix", "noreply@", "no-reply@"]
 
-# ============================================================
-# EXPANDED CATEGORIES
-# ============================================================
+# Only skip emails with these characteristics (not domains)
+BAD_EMAIL_PATTERNS = [
+    "example.com", "sentry", "wixpress", "domain.com", "test.com",
+    "yourdomain", ".png", ".jpg", ".jpeg", ".gif", ".css", ".js", ".svg",
+    "wordpress@", "info@wix.com", "noreply@", "no-reply@", "donotreply@",
+    "postmaster@", "abuse@", "webmaster@localhost"
+]
+
+# Domains we DON'T want to visit for email enrichment (they don't have org emails)
+# BUT we can still extract "real website" links from them
+DIRECTORY_DOMAINS = [
+    "infoisinfo", "yellosa", "forgood", "ngopulse", "cylex", "hotfrog",
+    "brabys", "yellowpages", "saYellow", "businesslist", "showme"
+]
+
+# Social/irrelevant sites we never enrich from
+SKIP_ENRICHMENT_DOMAINS = [
+    "facebook.com", "twitter.com", "x.com", "instagram.com",
+    "linkedin.com", "youtube.com", "tiktok.com", "pinterest.com"
+]
+
 CATEGORY_TERMS = {
     "Sports & Recreation": ["sports club", "recreation centre", "youth sports", "athletics club",
         "football club", "soccer club", "rugby club", "cricket club", "swimming club",
@@ -42,91 +56,124 @@ CATEGORY_TERMS = {
         "mentorship programme", "reading project", "educational support", "youth empowerment",
         "youth skills", "study support", "matric support", "career guidance",
         "youth outreach", "community learning", "peer tutoring"],
-    
-    # ============================================================
-    # NEW CATEGORIES
-    # ============================================================
     "Health & Wellness": ["community clinic", "hospice", "mental health support",
         "health outreach", "primary health care", "wellness centre", "counselling service",
         "rehabilitation centre", "health NGO", "medical charity", "dental clinic",
         "HIV support", "TB clinic", "maternal health", "child health clinic",
         "palliative care", "trauma centre", "rape crisis centre"],
-    
     "Senior Care": ["old age home", "retirement village", "senior centre",
         "elderly care", "frail care", "aged care association", "senior citizen club",
         "meals on wheels", "elderly support", "old age service", "senior outreach",
         "golden age club", "pensioner support"],
-    
     "Community Development": ["community centre", "civic organisation",
         "neighbourhood watch", "community forum", "residents association",
         "community development", "community upliftment", "civic association",
         "community outreach", "community trust", "community project",
         "community improvement", "ward committee"],
-    
     "Women & Family Support": ["women shelter", "women empowerment",
         "gender-based violence support", "family support", "single mother support",
         "women development", "women outreach", "family counselling",
         "abused women support", "women resource centre", "safe house",
         "family violence centre", "women's health"],
-    
     "Emergency & Rescue": ["fire brigade volunteer", "emergency services",
         "sea rescue", "mountain rescue", "disaster relief", "first aid",
         "ambulance volunteer", "search and rescue", "emergency response",
         "civil defence", "disaster management", "crisis response"],
 }
 
-# Suburbs for major cities
 CITY_SUBURBS = {
     "Cape Town": ["Cape Town CBD", "Sea Point", "Green Point", "Woodstock",
-        "Observatory", "Salt River", "Mowbray", "Rondebosch", "Claremont", "Wynberg",
-        "Athlone", "Bellville", "Parow", "Goodwood", "Milnerton", "Table View",
-        "Durbanville", "Khayelitsha", "Mitchells Plain", "Gugulethu"],
-    "Johannesburg": ["Johannesburg CBD", "Sandton", "Randburg", "Rosebank",
+        "Observatory", "Salt River", "Mowbray", "Rondebosch", "Claremont", "Wynberg"],
+    "Johannesburg": ["Johannesburg CBD", "Sandton", "Randbank", "Rosebank",
         "Soweto", "Midrand", "Roodepoort", "Alexandra", "Braamfontein", "Maboneng"],
 }
 
 def is_bad_email(email):
     el = email.lower()
-    return any(bad in el for bad in BAD_EMAIL_PARTS)
+    if len(el) < 6 or len(el) > 80:
+        return True
+    if el.count("@") != 1:
+        return True
+    local = el.split("@")[0]
+    if len(local) < 2:
+        return True
+    return any(bad in el for bad in BAD_EMAIL_PATTERNS)
+
+def extract_emails_from_html(html):
+    """Extract and clean emails from HTML."""
+    emails = EMAIL_REGEX.findall(html)
+    return [e.lower() for e in emails if not is_bad_email(e)]
+
+def pick_best_email(emails):
+    """Prefer info@, contact@, admin@, etc."""
+    if not emails:
+        return ""
+    # Deduplicate and sort by preference
+    unique = list(set(emails))
+    for pref in ["info@", "contact@", "admin@", "office@", "hello@", "enquiries@", "enquiry@", "reception@"]:
+        for e in unique:
+            if e.startswith(pref):
+                return e
+    return unique[0]
 
 def fetch_email_from_site(url, timeout=6):
+    """Visit an org's website and extract an email."""
     if not url or not url.startswith("http"):
         return ""
-    # Skip known directories (their emails are not the org's)
-    skip_domains = ["infoisinfo", "yellosa", "forgood", "ngopulse", "cylex", "hotfrog",
-                    "brabys", "yellowpages", "facebook.com", "twitter.com",
-                    "instagram.com", "linkedin.com", "youtube.com"]
-    if any(d in url.lower() for d in skip_domains):
+    # Skip social media and known dead-ends
+    if any(d in url.lower() for d in SKIP_ENRICHMENT_DOMAINS):
+        return ""
+    # Skip directory domains themselves (their emails are not org emails)
+    if any(d in url.lower() for d in DIRECTORY_DOMAINS):
         return ""
     try:
         r = requests.get(url, headers=HEADERS, timeout=timeout, allow_redirects=True)
         if r.status_code != 200:
             return ""
-        emails = EMAIL_REGEX.findall(r.text)
-        emails = [e for e in emails if not is_bad_email(e)]
+        emails = extract_emails_from_html(r.text)
         if emails:
-            # Prefer info@, contact@, admin@
-            for pref in ["info@", "contact@", "admin@", "office@", "hello@"]:
-                for e in emails:
-                    if e.lower().startswith(pref):
-                        return e
-            return emails[0]
-        # Try contact pages
-        for slug in ["/contact", "/contact-us", "/about", "/about-us",
-                     "/get-in-touch", "/reach-us", "/team", "/kontak"]:
+            return pick_best_email(emails)
+        # Try common contact pages
+        for slug in ["/contact", "/contact-us", "/contactus", "/about",
+                     "/about-us", "/get-in-touch", "/reach-us", "/team", "/kontak"]:
             try:
                 r2 = requests.get(urljoin(url, slug), headers=HEADERS, timeout=4)
-                emails2 = EMAIL_REGEX.findall(r2.text)
-                emails2 = [e for e in emails2 if not is_bad_email(e)]
-                if emails2:
-                    return emails2[0]
+                if r2.status_code == 200:
+                    emails2 = extract_emails_from_html(r2.text)
+                    if emails2:
+                        return pick_best_email(emails2)
             except Exception:
                 continue
     except Exception:
         pass
     return ""
 
-# ------------------ Search engines ------------------
+def extract_real_website_from_directory(dir_url):
+    """If we land on a directory page, try to find the actual org's website link."""
+    if not dir_url or not dir_url.startswith("http"):
+        return ""
+    try:
+        r = requests.get(dir_url, headers=HEADERS, timeout=6)
+        soup = BeautifulSoup(r.text, "html.parser")
+        # Look for external links (the "visit website" button on directories)
+        for a in soup.find_all("a", href=True):
+            href = a["href"].strip()
+            if not href.startswith("http"):
+                continue
+            if any(d in href.lower() for d in DIRECTORY_DOMAINS):
+                continue
+            if any(d in href.lower() for d in SKIP_ENRICHMENT_DOMAINS):
+                continue
+            if "google.com" in href.lower():
+                continue
+            text = a.get_text(strip=True).lower()
+            if "website" in text or "visit" in text or "www" in href:
+                return href
+    except Exception:
+        pass
+    return ""
+
+# ---------- Search engines ----------
 def scrape_bing(city, term, suburb=None):
     results = []
     query_loc = suburb if suburb else city
@@ -140,10 +187,10 @@ def scrape_bing(city, term, suburb=None):
                 continue
             name = h2.get_text(strip=True)
             link = h2.get("href", "")
-            snippet = li.select_one(".b_caption p")
-            snippet_text = snippet.get_text() if snippet else ""
-            emails = EMAIL_REGEX.findall(snippet_text)
-            email = emails[0] if emails and not is_bad_email(emails[0]) else ""
+            snippet_el = li.select_one(".b_caption p")
+            snippet = snippet_el.get_text() if snippet_el else ""
+            emails = extract_emails_from_html(snippet)
+            email = pick_best_email(emails)
             if not name or len(name) < 3:
                 continue
             results.append({"Organisation Name": name[:120], "Category": None,
@@ -168,8 +215,8 @@ def scrape_mojeek(city, term, suburb=None):
             href = a.get("href", "")
             snippet_el = li.select_one("p.s")
             snippet = snippet_el.get_text() if snippet_el else ""
-            emails = EMAIL_REGEX.findall(snippet)
-            email = emails[0] if emails and not is_bad_email(emails[0]) else ""
+            emails = extract_emails_from_html(snippet)
+            email = pick_best_email(emails)
             if not name or len(name) < 3:
                 continue
             results.append({"Organisation Name": name[:120], "Category": None,
@@ -194,8 +241,8 @@ def scrape_ecosia(city, term, suburb=None):
             href = a.get("href", "")
             snippet_el = result.select_one(".result__description, p")
             snippet = snippet_el.get_text() if snippet_el else ""
-            emails = EMAIL_REGEX.findall(snippet)
-            email = emails[0] if emails and not is_bad_email(emails[0]) else ""
+            emails = extract_emails_from_html(snippet)
+            email = pick_best_email(emails)
             if not name or len(name) < 3:
                 continue
             results.append({"Organisation Name": name[:120], "Category": None,
@@ -220,8 +267,8 @@ def scrape_startpage(city, term, suburb=None):
             href = a.get("href", "")
             snippet_el = result.select_one(".w-gl__description, p")
             snippet = snippet_el.get_text() if snippet_el else ""
-            emails = EMAIL_REGEX.findall(snippet)
-            email = emails[0] if emails and not is_bad_email(emails[0]) else ""
+            emails = extract_emails_from_html(snippet)
+            email = pick_best_email(emails)
             if not name or len(name) < 3:
                 continue
             results.append({"Organisation Name": name[:120], "Category": None,
@@ -231,10 +278,10 @@ def scrape_startpage(city, term, suburb=None):
         pass
     return results
 
-# ------------------ Main orchestration ------------------
+# ---------- Main ----------
 def scrape_all(city, category):
-    terms = CATEGORY_TERMS.get(category, [category])[:15]
-    suburbs = CITY_SUBURBS.get(city, [None])[:10]
+    terms = CATEGORY_TERMS.get(category, [category])[:10]
+    suburbs = CITY_SUBURBS.get(city, [None])[:6]
     
     all_results = []
     total = len(terms) * len(suburbs)
@@ -245,14 +292,13 @@ def scrape_all(city, category):
             counter += 1
             loc_label = suburb if suburb else city
             print(f"  [{counter}/{total}] '{term}' in {loc_label}")
-            
             all_results += scrape_bing(city, term, suburb)
             all_results += scrape_mojeek(city, term, suburb)
             all_results += scrape_ecosia(city, term, suburb)
             all_results += scrape_startpage(city, term, suburb)
-            time.sleep(random.uniform(0.4, 1.0))
+            time.sleep(random.uniform(0.3, 0.8))
     
-    # Deduplicate
+    # Deduplicate by name
     seen = set()
     unique = []
     for r in all_results:
@@ -264,24 +310,41 @@ def scrape_all(city, category):
         unique.append(r)
     
     print(f"  -> {len(unique)} unique organisations found")
+    print(f"  -> Enriching emails (with directory→real-website resolution)...")
     
-    # Aggressive email enrichment
-    print(f"  -> Enriching emails from websites...")
     enriched_count = 0
     for i, r in enumerate(unique):
-        if not r["Email"] and r["Website"]:
-            email = fetch_email_from_site(r["Website"])
+        if r["Email"]:
+            enriched_count += 1
+            continue
+        
+        website = r["Website"]
+        if not website:
+            continue
+        
+        # If it's a directory page, extract the REAL org website first
+        is_directory = any(d in website.lower() for d in DIRECTORY_DOMAINS)
+        if is_directory:
+            real_site = extract_real_website_from_directory(website)
+            if real_site:
+                r["Website"] = real_site
+                email = fetch_email_from_site(real_site)
+                if email:
+                    r["Email"] = email
+                    enriched_count += 1
+        
+        # Direct website enrichment
+        if not r["Email"]:
+            email = fetch_email_from_site(website)
             if email:
                 r["Email"] = email
                 enriched_count += 1
-        # Show progress every 25
-        if (i + 1) % 25 == 0:
+        
+        if (i + 1) % 20 == 0:
             print(f"    [{i+1}/{len(unique)}] enriched: {enriched_count}")
-        # Faster enrichment
-        if not r["Email"]:
-            time.sleep(0.1)
+        time.sleep(0.15)
     
-    print(f"  -> Enriched {enriched_count} emails from websites")
+    print(f"  -> Enriched {enriched_count} emails total")
     return unique
 
 if __name__ == "__main__":
@@ -302,4 +365,5 @@ if __name__ == "__main__":
             df[c] = ""
     df = df[cols]
     df.to_excel(out, index=False, engine="xlsxwriter")
-    print(f"✅ Saved {len(df)} organisations to {out}")
+    with_email = (df["Email"] != "").sum()
+    print(f"✅ Saved {len(df)} orgs to {out} ({with_email} with emails)")
