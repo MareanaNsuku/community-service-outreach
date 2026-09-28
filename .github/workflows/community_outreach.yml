@@ -82,9 +82,8 @@ jobs:
 
       - name: Run outreach
         env:
-          OUTLOOK_CLIENT_ID: ${{ secrets.OUTLOOK_CLIENT_ID }}
-          OUTLOOK_EMAIL: ${{ secrets.OUTLOOK_EMAIL }}
-          MSAL_REFRESH_TOKEN: ${{ secrets.MSAL_REFRESH_TOKEN }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: |
           if [ "${{ steps.mode.outputs.category }}" = "All Categories" ]; then
             HOUR=$(date -u +%H)
