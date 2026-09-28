@@ -85,7 +85,6 @@ def send_emails(data_file):
     attachments = glob.glob(os.path.join(DOCUMENTS_FOLDER, "*.pdf"))
     if not attachments:
         print("❌ No PDFs in documents/")
-        server.quit()
         return
 
     # Only unsent
