@@ -103,6 +103,18 @@ def send_emails(data_file):
             print(f"[{i+1}/{len(to_send)}] ⚠️ Skip {org} – no valid email")
             continue
 
+        # Reconnect before each send (Gmail drops connection after ~1 message)
+        try:
+            server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30)
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+        except Exception as e:
+            failed.append(f"{org}: reconnect failed – {e}")
+            print(f"[{i+1}/{len(to_send)}] ❌ {org} – reconnect failed: {e}")
+            continue
+
         try:
             msg = build_message(email, attachments)
             server.send_message(msg)
@@ -112,6 +124,11 @@ def send_emails(data_file):
         except Exception as e:
             failed.append(f"{org}: {e}")
             print(f"[{i+1}/{len(to_send)}] ❌ {org} – {e}")
+        finally:
+            try:
+                server.quit()
+            except Exception:
+                pass
 
         # Save progress after each send
         if data_file.endswith(".xlsx"):
@@ -121,8 +138,6 @@ def send_emails(data_file):
 
         if i < len(to_send) - 1:
             time.sleep(SLEEP_BETWEEN)
-
-    server.quit()
 
     print("\n" + "=" * 60)
     print(f"✅ Sent: {len(sent)}")
