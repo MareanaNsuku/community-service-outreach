@@ -19,9 +19,9 @@ def create_html_body():
     return """<html><body>
 <p>Dear Sir/Madam,</p>
 <p>I hope this message finds you well.</p>
-<p>My name is <strong>Nsuku Mareana</strong>, and I am a Mechanical &amp; Mechatronics Engineering student at the University of Cape Town. My bursary requires me to complete 40 hours of community service with a registered non-profit or community-based organisation, and I am writing to respectfully enquire whether your organisation might be able to host me as a volunteer between now and <strong>31 October</strong>.</p>
+<p>My name is <strong>Nsuku Mareana</strong>, and I am a Mechanical &amp; Mechatronics Engineering student at the University of Cape Town. My bursary requires me to complete 40 hours of community service with a registered non-profit or community-based organisation, and I am writing to respectfully enquire whether your organisation might be able to host me as a volunteer on any date between now and <strong>31 October 2026</strong>, as I am required to complete these hours before that deadline.</p>
 <p>I am currently based in <strong>Cape Town</strong>, and I am very keen to offer my time and energy to support the important work you do in our community.</p>
-<p>I am available for a maximum of 40 hours between now and 31 October, and I would be happy to work around your schedule and needs.</p>
+<p>I am available for a maximum of 40 hours on any date between now and <strong>31 October 2026</strong>, and I would be happy to work around your schedule and needs.</p>
 <p>For your reference, I have attached my CV, Academic Transcript, and Reference Letter.</p>
 <p>Thank you for your time and consideration.</p>
 <p>Kind regards,<br>
