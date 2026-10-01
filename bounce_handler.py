@@ -97,9 +97,24 @@ def fetch_bounces(mail, days_back=30):
             continue
         print("   Scanning " + folder + "...")
         try:
-            status, data = mail.search(None, '(SINCE "' + since_date + '" FROM "mailer-daemon")')
+            # Broad search — catches mailer-daemon, postmaster, Mail Delivery Subsystem,
+            # and any message with bounce-related subject lines
+            criteria = (
+                '(SINCE "' + since_date + '" '
+                '(OR (OR (OR (FROM "mailer-daemon") '
+                '(FROM "postmaster")) '
+                '(SUBJECT "Delivery Status Notification")) '
+                '(OR (SUBJECT "Undelivered Mail") '
+                '(OR (SUBJECT "Mail delivery failed") '
+                '(SUBJECT "failure notice")))))'
+            )
+            status, data = mail.search(None, criteria)
         except Exception:
-            continue
+            # Fallback to just the since filter
+            try:
+                status, data = mail.search(None, '(SINCE "' + since_date + '")')
+            except Exception:
+                continue
         if status != "OK":
             continue
         msg_ids = data[0].split()
