@@ -16,12 +16,20 @@ on:
           - Arts & Culture
           - Youth & Tutoring
           - Community Development
-          - Emergency & Rescue
-          - Substance Abuse Recovery
-          - Refugee & Migrant Support
-          - Community Safety
-          - Prison & Rehabilitation
-          - Legal Aid & Human Rights
+          - Museums & Heritage
+          - Libraries & Reading Programmes
+          - Public Parks & Gardens
+          - Cultural Centres & Community Halls
+          - Historic Sites & Preservation
+          - Neighbourhood Associations
+          - Community Media & Radio
+          - Community Markets & Farmers Markets
+          - Performing Arts & Music Groups
+          - Adult Education & Skills Training
+          - Volunteer Centres & NGO Support
+          - Tourism & Visitor Information
+          - Community Events & Festivals
+          - Hobby & Special Interest Clubs
   schedule:
     - cron: '0 6,12 * * *'
 

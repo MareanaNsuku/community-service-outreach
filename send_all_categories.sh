@@ -10,15 +10,23 @@ if [ "$RUN_SLOT" = "morning" ]; then
         "Arts & Culture"
         "Youth & Tutoring"
         "Community Development"
+        "Museums & Heritage"
+        "Libraries & Reading Programmes"
+        "Public Parks & Gardens"
+        "Cultural Centres & Community Halls"
     )
 else
     CATEGORIES=(
-        "Emergency & Rescue"
-        "Substance Abuse Recovery"
-        "Refugee & Migrant Support"
-        "Community Safety"
-        "Prison & Rehabilitation"
-        "Legal Aid & Human Rights"
+        "Historic Sites & Preservation"
+        "Neighbourhood Associations"
+        "Community Media & Radio"
+        "Community Markets & Farmers Markets"
+        "Performing Arts & Music Groups"
+        "Adult Education & Skills Training"
+        "Volunteer Centres & NGO Support"
+        "Tourism & Visitor Information"
+        "Community Events & Festivals"
+        "Hobby & Special Interest Clubs"
     )
 fi
 
