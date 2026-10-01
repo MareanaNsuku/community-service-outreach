@@ -102,6 +102,10 @@ jobs:
           else
             bash send_subset.sh "Cape Town" "${{ steps.mode.outputs.category }}"
           fi
+      - name: Sync batch results back to master
+        if: always()
+        run: python3 sync_batch_to_master.py
+
       - name: Commit send results
         if: always()
         run: |
