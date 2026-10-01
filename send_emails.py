@@ -13,7 +13,7 @@ BREVO_SMTP_LOGIN = os.getenv("BREVO_SMTP_LOGIN")
 BREVO_SMTP_PASSWORD = os.getenv("BREVO_SMTP_PASSWORD")
 
 # From address (must be a verified sender in Brevo)
-FROM_EMAIL = os.getenv("GMAIL_USER", "mareanansuku@gmail.com")
+FROM_EMAIL = os.getenv("SENDER_EMAIL", "mrnnsu001@myuct.ac.za")
 
 DOCUMENTS_FOLDER = "documents"
 SUBJECT = "Student Volunteer Enquiry: 40-Hour Bursary Community Service"
