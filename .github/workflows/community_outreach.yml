@@ -35,7 +35,7 @@ on:
           - Community Events & Festivals
           - Hobby & Special Interest Clubs
   schedule:
-    - cron: '0 6,12 * * *'
+    - cron: '0 4,12 * * *'
 
 permissions:
   contents: write
