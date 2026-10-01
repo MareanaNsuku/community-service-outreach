@@ -51,7 +51,7 @@ permissions:
   contents: write
 
 jobs:
-  send:
+  outreach:
     runs-on: ubuntu-latest
     timeout-minutes: 350
 
@@ -70,6 +70,29 @@ jobs:
         run: |
           pip install pandas openpyxl xlsxwriter
 
+      # ============================================================
+      # STEP 1: Scan bounces and update blocklist
+      # ============================================================
+      - name: Scan bounces
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          echo "=== STEP 1: Scanning for bounces ==="
+          python3 bounce_handler.py || echo "Bounce scan failed, continuing anyway"
+
+      - name: Commit bounce results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f results/blocklist.xlsx results/master_contacts.xlsx || true
+          git commit -m "Bounce scan $(date -u +%Y-%m-%d)" || echo "No bounce changes"
+          git pull --rebase origin main || true
+          git push || echo "Bounce push skipped"
+
+      # ============================================================
+      # STEP 2: Determine run mode
+      # ============================================================
       - name: Determine run mode
         id: mode
         run: |
@@ -81,6 +104,9 @@ jobs:
             echo "category=${{ github.event.inputs.category }}" >> $GITHUB_OUTPUT
           fi
 
+      # ============================================================
+      # STEP 3: Send outreach emails
+      # ============================================================
       - name: Run outreach
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
@@ -101,7 +127,10 @@ jobs:
             bash send_subset.sh "${{ steps.mode.outputs.location }}" "${{ steps.mode.outputs.category }}"
           fi
 
-      - name: Commit results back to repo
+      # ============================================================
+      # STEP 4: Commit send results
+      # ============================================================
+      - name: Commit send results
         if: always()
         run: |
           git config user.name "github-actions[bot]"
