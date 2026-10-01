@@ -3,28 +3,6 @@ name: Community Outreach
 on:
   workflow_dispatch:
     inputs:
-      location:
-        description: 'Select location'
-        required: true
-        default: 'Cape Town'
-        type: choice
-        options:
-          - Cape Town
-          - Randburg
-          - Sandton
-          - Johannesburg
-          - Centurion
-          - Roodepoort
-          - Midrand
-          - Rosebank
-          - Alberton
-          - Edenvale
-          - Soweto
-          - Boksburg
-          - Kempton Park
-          - Krugersdorp
-          - Daveyton
-          - Springs
       category:
         description: 'Select category (or All)'
         required: true
@@ -37,14 +15,14 @@ on:
           - Environmental
           - Arts & Culture
           - Youth & Tutoring
-          - Health & Wellness
-          - Senior Care
           - Community Development
-          - Women & Family Support
           - Emergency & Rescue
+          - Substance Abuse Recovery
+          - Refugee & Migrant Support
+          - Community Safety
+          - Prison & Rehabilitation
+          - Legal Aid & Human Rights
   schedule:
-    # 06:00 UTC = 08:00 SAST (morning slot)
-    # 12:00 UTC = 14:00 SAST (afternoon slot)
     - cron: '0 6,12 * * *'
 
 permissions:
@@ -70,9 +48,6 @@ jobs:
         run: |
           pip install pandas openpyxl xlsxwriter
 
-      # ============================================================
-      # STEP 1: Scan bounces and update blocklist
-      # ============================================================
       - name: Scan bounces
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
@@ -90,23 +65,15 @@ jobs:
           git pull --rebase origin main || true
           git push || echo "Bounce push skipped"
 
-      # ============================================================
-      # STEP 2: Determine run mode
-      # ============================================================
       - name: Determine run mode
         id: mode
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            echo "location=Cape Town" >> $GITHUB_OUTPUT
             echo "category=All Categories" >> $GITHUB_OUTPUT
           else
-            echo "location=${{ github.event.inputs.location }}" >> $GITHUB_OUTPUT
             echo "category=${{ github.event.inputs.category }}" >> $GITHUB_OUTPUT
           fi
 
-      # ============================================================
-      # STEP 3: Send outreach emails
-      # ============================================================
       - name: Run outreach
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
@@ -122,14 +89,11 @@ jobs:
               SLOT="evening"
             fi
             echo "UTC hour: $HOUR → using slot: $SLOT"
-            bash send_all_categories.sh "${{ steps.mode.outputs.location }}" "$SLOT"
+            bash send_all_categories.sh "$SLOT"
           else
-            bash send_subset.sh "${{ steps.mode.outputs.location }}" "${{ steps.mode.outputs.category }}"
+            bash send_subset.sh "Cape Town" "${{ steps.mode.outputs.category }}"
           fi
 
-      # ============================================================
-      # STEP 4: Commit send results
-      # ============================================================
       - name: Commit send results
         if: always()
         run: |

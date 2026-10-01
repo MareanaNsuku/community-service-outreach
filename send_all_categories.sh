@@ -1,11 +1,6 @@
 #!/bin/bash
-LOCATION="$1"
-RUN_SLOT="${2:-morning}"
-
-if [ -z "$LOCATION" ]; then
-    echo "Usage: bash send_all_categories.sh <location> [morning|evening]"
-    exit 1
-fi
+RUN_SLOT="${1:-morning}"
+LOCATION="Cape Town"
 
 if [ "$RUN_SLOT" = "morning" ]; then
     CATEGORIES=(
@@ -14,14 +9,16 @@ if [ "$RUN_SLOT" = "morning" ]; then
         "Environmental"
         "Arts & Culture"
         "Youth & Tutoring"
+        "Community Development"
     )
 else
     CATEGORIES=(
-        "Health & Wellness"
-        "Senior Care"
-        "Community Development"
-        "Women & Family Support"
         "Emergency & Rescue"
+        "Substance Abuse Recovery"
+        "Refugee & Migrant Support"
+        "Community Safety"
+        "Prison & Rehabilitation"
+        "Legal Aid & Human Rights"
     )
 fi
 
