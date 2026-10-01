@@ -26,7 +26,11 @@ else
         "Tourism & Visitor Information"
         "Community Events & Festivals"
         "Hobby & Special Interest Clubs"
-    )
+    
+        "Emergency & Rescue"
+        "Women & Family Support"
+        "Senior Care"
+        "Health & Wellness")
 fi
 
 echo "========================================="

@@ -19,7 +19,7 @@ DOCUMENTS_FOLDER = "documents"
 SUBJECT = "Student Volunteer Enquiry: 40-Hour Bursary Community Service"
 
 # Brevo allows 300/day on free plan; send 8 per category to stay safe
-MAX_PER_RUN = 8
+MAX_PER_RUN = 40
 SLEEP_BETWEEN = 60  # 1 minute between sends (Brevo handles bulk better)
 
 
