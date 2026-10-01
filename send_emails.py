@@ -6,16 +6,21 @@ import glob
 from email.message import EmailMessage
 import pandas as pd
 
-SMTP_HOST = "smtp.gmail.com"
+# ---------- Brevo SMTP config ----------
+SMTP_HOST = "smtp-relay.brevo.com"
 SMTP_PORT = 587
-GMAIL_USER = os.getenv("GMAIL_USER", "mareanansuku@gmail.com")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
+BREVO_SMTP_LOGIN = os.getenv("BREVO_SMTP_LOGIN")
+BREVO_SMTP_PASSWORD = os.getenv("BREVO_SMTP_PASSWORD")
+
+# From address (must be a verified sender in Brevo)
+FROM_EMAIL = os.getenv("GMAIL_USER", "mareanansuku@gmail.com")
 
 DOCUMENTS_FOLDER = "documents"
 SUBJECT = "Student Volunteer Enquiry: 40-Hour Bursary Community Service"
 
-MAX_PER_RUN = 10
-SLEEP_BETWEEN = 300
+# Brevo allows 300/day on free plan; send 8 per category to stay safe
+MAX_PER_RUN = 8
+SLEEP_BETWEEN = 60  # 1 minute between sends (Brevo handles bulk better)
 
 
 def create_html_body():
@@ -38,7 +43,7 @@ LinkedIn: <a href="https://www.linkedin.com/in/nsukumareana">nsukumareana</a></p
 
 def build_message(to_email, attachments):
     msg = EmailMessage()
-    msg["From"] = GMAIL_USER
+    msg["From"] = FROM_EMAIL
     msg["To"] = to_email
     msg["Subject"] = SUBJECT
     msg["Importance"] = "High"
@@ -63,7 +68,7 @@ def connect_smtp():
         server.ehlo()
         server.starttls()
         server.ehlo()
-        server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+        server.login(BREVO_SMTP_LOGIN, BREVO_SMTP_PASSWORD)
         return server
     except Exception as e:
         print("   SMTP connect failed: " + str(e))
@@ -80,8 +85,11 @@ def safe_quit(server):
 
 
 def send_emails(data_file):
-    if not GMAIL_APP_PASSWORD:
-        print("ERROR: GMAIL_APP_PASSWORD not set")
+    if not BREVO_SMTP_PASSWORD:
+        print("ERROR: BREVO_SMTP_PASSWORD not set")
+        return
+    if not BREVO_SMTP_LOGIN:
+        print("ERROR: BREVO_SMTP_LOGIN not set")
         return
 
     if data_file.endswith(".xlsx"):
@@ -106,7 +114,8 @@ def send_emails(data_file):
     print("Sending to " + str(len(to_send)) + " contacts (max " + str(MAX_PER_RUN) + "/run)")
     print("   Attachments: " + str(len(attachments)) + " PDFs")
     print("   Delay: " + str(SLEEP_BETWEEN) + "s between sends")
-    print("   Each email gets a fresh SMTP connection")
+    print("   Provider: Brevo SMTP")
+    print("   From: " + FROM_EMAIL)
     print("")
 
     sent = []
