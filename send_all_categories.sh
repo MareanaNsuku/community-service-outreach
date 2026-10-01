@@ -1,8 +1,7 @@
 #!/bin/bash
-RUN_SLOT="${1:-morning}"
-LOCATION="Cape Town"
+SLOT="${1:-morning}"
 
-if [ "$RUN_SLOT" = "morning" ]; then
+if [ "$SLOT" = "morning" ]; then
     CATEGORIES=(
         "Sports & Recreation"
         "Animal Welfare"
@@ -30,15 +29,17 @@ else
     )
 fi
 
-mkdir -p results
-echo "=== RUNNING $RUN_SLOT SLOT: ${#CATEGORIES[@]} categories for $LOCATION ==="
+echo "========================================="
+echo "Running slot: $SLOT (${#CATEGORIES[@]} categories)"
+echo "========================================="
 
-for CATEGORY in "${CATEGORIES[@]}"; do
+for cat in "${CATEGORIES[@]}"; do
     echo ""
-    echo "### CATEGORY: $CATEGORY ###"
-    bash send_subset.sh "$LOCATION" "$CATEGORY"
-    echo "--- Waiting 30s ---"
-    sleep 30
+    echo "#########################################"
+    echo "# CATEGORY: $cat"
+    echo "#########################################"
+    bash send_subset.sh "Cape Town" "$cat" || echo "⚠️ Category '$cat' failed, continuing..."
 done
 
-echo "=== $RUN_SLOT SLOT COMPLETE ==="
+echo ""
+echo "🎉 All categories in $SLOT slot processed."
