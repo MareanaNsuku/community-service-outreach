@@ -40,6 +40,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: community-outreach-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   outreach:
     runs-on: ubuntu-latest
@@ -72,10 +76,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f results/blocklist.xlsx results/master_contacts.xlsx || true
+          git add -f results/blocklist.xlsx || true
           git commit -m "Bounce scan $(date -u +%Y-%m-%d)" || echo "No bounce changes"
-          git pull --rebase origin main || true
-          git push || echo "Bounce push skipped"
 
       - name: Determine run mode
         id: mode
@@ -115,7 +117,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f results/*.xlsx || true
+          git add -f results/*.xlsx results/*.csv || true
           git commit -m "Auto: update sent log $(date -u +%Y-%m-%d)" || echo "No changes"
-          git pull --rebase origin main || true
-          git push || echo "Push failed"
+
+          # Fetch remote and merge — for binary files, take OURS (we have the newest data)
+          git config pull.rebase false
+          git pull --no-rebase --no-edit -X ours origin main || git pull --no-rebase --no-edit origin main || echo "Pull had conflicts, continuing"
+
+          git push origin main || echo "Push failed"
