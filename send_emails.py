@@ -1,8 +1,11 @@
-import os, sys, time, smtplib, glob
+import os
+import sys
+import time
+import smtplib
+import glob
 from email.message import EmailMessage
 import pandas as pd
 
-# ---------- Gmail SMTP config ----------
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 587
 GMAIL_USER = os.getenv("GMAIL_USER", "mareanansuku@gmail.com")
@@ -28,8 +31,8 @@ def create_html_body():
 <strong>Nsuku Mareana</strong><br>
 Mechanical &amp; Mechatronics Engineering Student<br>
 University of Cape Town<br>
-📞 <a href="tel:+27680789360">+27 68 078 9360</a><br>
-🔗 <a href="https://www.linkedin.com/in/nsukumareana">LinkedIn Profile</a></p>
+Phone: <a href="tel:+27680789360">+27 68 078 9360</a><br>
+LinkedIn: <a href="https://www.linkedin.com/in/nsukumareana">nsukumareana</a></p>
 </body></html>"""
 
 
@@ -55,7 +58,6 @@ def build_message(to_email, attachments):
 
 
 def connect_smtp():
-    """Create a fresh SMTP connection. Returns None on failure."""
     try:
         server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=45)
         server.ehlo()
@@ -64,12 +66,11 @@ def connect_smtp():
         server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
         return server
     except Exception as e:
-        print(f"   ⚠️ SMTP connect failed: {e}")
+        print("   SMTP connect failed: " + str(e))
         return None
 
 
 def safe_quit(server):
-    """Close the SMTP connection quietly."""
     if server is None:
         return
     try:
@@ -80,10 +81,9 @@ def safe_quit(server):
 
 def send_emails(data_file):
     if not GMAIL_APP_PASSWORD:
-        print("❌ GMAIL_APP_PASSWORD not set")
+        print("ERROR: GMAIL_APP_PASSWORD not set")
         return
 
-    # Read contacts
     if data_file.endswith(".xlsx"):
         df = pd.read_excel(data_file)
     else:
@@ -95,20 +95,23 @@ def send_emails(data_file):
 
     attachments = glob.glob(os.path.join(DOCUMENTS_FOLDER, "*.pdf"))
     if not attachments:
-        print("❌ No PDFs in documents/")
+        print("ERROR: No PDFs in documents/")
         return
 
     to_send = df[df["Sent"].astype(str).str.lower() != "yes"].head(MAX_PER_RUN)
     if to_send.empty:
-        print("📭 No unsent contacts")
+        print("No unsent contacts")
         return
 
-    print(f"📧 Sending to {len(to_send)} contacts (max {MAX_PER_RUN}/run)")
-    print(f"   Attachments: {len(attachments)} PDFs")
-    print(f"   Delay: {SLEEP_BETWEEN}s between sends")
-    print(f"   Each email gets a fresh SMTP connection\n")
+    print("Sending to " + str(len(to_send)) + " contacts (max " + str(MAX_PER_RUN) + "/run)")
+    print("   Attachments: " + str(len(attachments)) + " PDFs")
+    print("   Delay: " + str(SLEEP_BETWEEN) + "s between sends")
+    print("   Each email gets a fresh SMTP connection")
+    print("")
 
-    sent, skipped, failed = [], [], []
+    sent = []
+    skipped = []
+    failed = []
 
     for i, (idx, row) in enumerate(to_send.iterrows()):
         org = str(row.get("Organisation Name", "your organisation"))
@@ -116,14 +119,13 @@ def send_emails(data_file):
 
         if "@" not in email:
             skipped.append(org)
-            print(f"[{i+1}/{len(to_send)}] ⚠️ Skip {org} – no valid email")
+            print("[" + str(i + 1) + "/" + str(len(to_send)) + "] SKIP " + org + " - no email")
             continue
 
-        # --- FRESH CONNECTION for every email ---
         server = connect_smtp()
         if server is None:
-            failed.append(f"{org}: could not connect to SMTP")
-            print(f"[{i+1}/{len(to_send)}] ❌ {org} – could not connect")
+            failed.append(org + ": could not connect")
+            print("[" + str(i + 1) + "/" + str(len(to_send)) + "] FAIL " + org + " - could not connect")
             time.sleep(30)
             continue
 
@@ -131,41 +133,38 @@ def send_emails(data_file):
             msg = build_message(email, attachments)
             server.send_message(msg)
             df.at[idx, "Sent"] = "Yes"
-            sent.append(f"{org} ({email})")
-            print(f"[{i+1}/{len(to_send)}] ✅ {org}")
+            sent.append(org + " (" + email + ")")
+            print("[" + str(i + 1) + "/" + str(len(to_send)) + "] OK " + org)
         except Exception as e:
-            failed.append(f"{org}: {e}")
-            print(f"[{i+1}/{len(to_send)}] ❌ {org} – {e}")
+            failed.append(org + ": " + str(e))
+            print("[" + str(i + 1) + "/" + str(len(to_send)) + "] FAIL " + org + " - " + str(e))
         finally:
             safe_quit(server)
 
-        # Save progress immediately after each send
         try:
             if data_file.endswith(".xlsx"):
                 df.to_excel(data_file, index=False, engine="xlsxwriter")
             else:
                 df.to_csv(data_file, index=False)
         except Exception as e:
-            print(f"   ⚠️ Could not save progress: {e}")
+            print("   Could not save progress: " + str(e))
 
         if i < len(to_send) - 1:
             time.sleep(SLEEP_BETWEEN)
 
-    print("\n" + "=" * 60)
-    print("📋 SEND SUMMARY")
+    print("")
     print("=" * 60)
-    print(f"✅ Sent: {len(sent)}")
-    if sent:
-        for s in sent:
-            print(f"   • {s}")
+    print("SEND SUMMARY")
+    print("=" * 60)
+    print("Sent: " + str(len(sent)))
+    for s in sent:
+        print("   - " + s)
     if skipped:
-        print(f"\n⚠️ Skipped: {len(skipped)}")
-        for s in skipped:
-            print(f"   • {s}")
+        print("Skipped: " + str(len(skipped)))
     if failed:
-        print(f"\n❌ Failed: {len(failed)}")
+        print("Failed: " + str(len(failed)))
         for f in failed:
-            print(f"   • {f}")
+            print("   - " + f)
     print("=" * 60)
 
 

@@ -1,27 +1,26 @@
 #!/bin/bash
 LOCATION="$1"
-RUN_SLOT="${2:-morning}"  # "morning" or "evening"
 
-if [ "$RUN_SLOT" = "morning" ]; then
-    CATEGORIES=(
-        "Sports & Recreation"
-        "Animal Welfare"
-        "Environmental"
-        "Arts & Culture"
-        "Youth & Tutoring"
-    )
-else
-    CATEGORIES=(
-        "Health & Wellness"
-        "Senior Care"
-        "Community Development"
-        "Women & Family Support"
-        "Emergency & Rescue"
-    )
+if [ -z "$LOCATION" ]; then
+    echo "Usage: bash send_all_categories.sh <location>"
+    exit 1
 fi
 
+CATEGORIES=(
+    "Sports & Recreation"
+    "Animal Welfare"
+    "Environmental"
+    "Arts & Culture"
+    "Youth & Tutoring"
+    "Health & Wellness"
+    "Senior Care"
+    "Community Development"
+    "Women & Family Support"
+    "Emergency & Rescue"
+)
+
 mkdir -p results
-echo "=== RUNNING $RUN_SLOT SLOT: ${#CATEGORIES[@]} categories for $LOCATION ==="
+echo "=== RUNNING ALL CATEGORIES FOR: $LOCATION ==="
 
 for CATEGORY in "${CATEGORIES[@]}"; do
     echo ""
@@ -31,4 +30,4 @@ for CATEGORY in "${CATEGORIES[@]}"; do
     sleep 30
 done
 
-echo "=== $RUN_SLOT SLOT COMPLETE ==="
+echo "=== ALL CATEGORIES COMPLETE ==="
