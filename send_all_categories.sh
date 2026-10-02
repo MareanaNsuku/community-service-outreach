@@ -28,7 +28,6 @@ else
         "Hobby & Special Interest Clubs"
     
         "Emergency & Rescue"
-        "Women & Family Support"
         "Senior Care"
         "Health & Wellness")
 fi
