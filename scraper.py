@@ -19,23 +19,6 @@ def _save_on_sigterm(signum, frame):
 _sig.signal(_sig.SIGTERM, _save_on_sigterm)
 _sig.signal(_sig.SIGINT, _save_on_sigterm)
 
-
-def _save_progress(results_list, out_path):
-    """Save current results to Excel immediately."""
-    try:
-        import pandas as pd
-        df = pd.DataFrame(results_list)
-        cols = ["Organisation Name", "Category", "Location", "Email", "Phone", "Website", "Address", "Source"]
-        for c in cols:
-            if c not in df.columns:
-                df[c] = ""
-        df = df[cols]
-        df.to_excel(out_path, index=False, engine="xlsxwriter")
-        print(f"💾 Progress saved: {len(results_list)} rows")
-    except Exception as e:
-        print(f"⚠️ Save failed: {e}")
-
-
 import os, re, sys, time, random, json
 import requests
 from bs4 import BeautifulSoup
@@ -341,14 +324,14 @@ def scrape_startpage(city, term, suburb=None):
 
 # ---------- Main ----------
 def scrape_all(city, category):
-    terms = CATEGORY_TERMS.get(category, [category])[:5]
+    terms = CATEGORY_TERMS.get(category, [category])[:10]
     suburbs = CITY_SUBURBS.get(city, [None])[:6]
     
     all_results = []
     total = len(terms) * len(suburbs)
     counter = 0
     
-    for suburb in suburbs[:3]:  # limited for speed
+    for suburb in suburbs:
         for term in terms:
             counter += 1
             loc_label = suburb if suburb else city
@@ -374,19 +357,7 @@ def scrape_all(city, category):
     print(f"  -> Enriching emails (with directory→real-website resolution)...")
     
     enriched_count = 0
-    # Compute output path for saves
-_safe_city = city.replace(" ", "_")
-_safe_cat = category.replace(" ", "_").replace("&", "and")
-_progress_path = f"results/scraped_{_safe_city}_{_safe_cat}.xlsx"
-
-# Save snapshot BEFORE enrichment (so we have data even if killed)
-_save_progress(unique, _progress_path)
-
-for i, r in enumerate(unique[:80]):  # capped enrichment
-    # Save every 20 orgs
-    if i > 0 and i % 20 == 0:
-        _save_progress(unique[:i], _progress_path)
-
+    for i, r in enumerate(unique):
         if r["Email"]:
             enriched_count += 1
             continue
