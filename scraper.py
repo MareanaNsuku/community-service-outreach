@@ -1,3 +1,24 @@
+# PERIODIC_SAVE_PATCH
+import signal as _sig
+import sys as _sys
+
+_partial_state = {"results": [], "out_path": None}
+
+def _save_on_sigterm(signum, frame):
+    """Save whatever we have when killed by timeout."""
+    if _partial_state["results"] and _partial_state["out_path"]:
+        try:
+            import pandas as _pd
+            _df = _pd.DataFrame(_partial_state["results"])
+            _df.to_excel(_partial_state["out_path"], index=False)
+            print(f"💾 Saved {len(_partial_state['results'])} partial results (killed by signal)")
+        except Exception as _e:
+            print(f"⚠️ Could not save partial: {_e}")
+    _sys.exit(0)
+
+_sig.signal(_sig.SIGTERM, _save_on_sigterm)
+_sig.signal(_sig.SIGINT, _save_on_sigterm)
+
 import os, re, sys, time, random, json
 import requests
 from bs4 import BeautifulSoup
