@@ -21,7 +21,7 @@ def filter_master(location, category, output_file):
         if c not in df.columns:
             df[c] = ""
 
-    mask_loc = df["Location"].astype(str).str.contains(location, case=False, na=False)
+    mask_loc = pd.Series([True] * len(df))  # Location filter disabled
     df_loc = df[mask_loc].copy()
 
     mask_cat = df_loc["Category"].astype(str).str.contains(category, case=False, na=False)
