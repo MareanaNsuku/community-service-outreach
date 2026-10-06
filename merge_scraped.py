@@ -32,6 +32,7 @@ def merge(scraped_file, output_file):
     
     if df.empty:
         print("No new contacts after filtering. Nothing to send.")
+    return  # exit 0 — not an error
         sys.exit(1)
     
     df["Sent"] = ""
