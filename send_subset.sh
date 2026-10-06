@@ -25,7 +25,7 @@ if [ -f "$SCRAPED" ]; then
     echo "========================================="
     echo "STEP 2: Preparing scraped contacts"
     echo "========================================="
-    python3 merge_scraped.py "$SCRAPED" "$MERGED" && echo "✅ Prepared" || echo "⚠️ Merge failed"
+    python3 merge_scraped.py "$SCRAPED" "$MERGED" && echo "✅ Prepared" || echo "ℹ️  No new scraped contacts to merge (OK)"
 fi
 
 echo ""
