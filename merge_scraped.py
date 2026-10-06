@@ -25,7 +25,7 @@ def merge(scraped_file, output_file):
         df = df[~df["Email"].str.lower().isin(blocked)]
     
     # Remove obvious garbage (URLs, single chars before @)
-    df = df[~df["Email"].str.contains(r"\.(png|jpg|gif|css|js)$", regex=True, na=False)]
+    df = df[~df["Email"].str.contains(r"\.(?:png|jpg|gif|css|js)$", regex=True, na=False)]
     df = df[df["Email"].str.len() > 5]
     
     df = df.head(25).reset_index(drop=True)
