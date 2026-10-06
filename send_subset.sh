@@ -18,7 +18,7 @@ OUTPUT="results/auto_${SAFE_LOCATION}_${SAFE_CATEGORY_CLEAN}.xlsx"
 echo "========================================="
 echo "STEP 1: Scraping new contacts (3-min timeout)"
 echo "========================================="
-timeout 600 python3 scraper.py "$LOCATION" "$CATEGORY" && echo "✅ Scraper done" || echo "⚠️ Scraper timed out or failed — using curated list only"
+timeout 900 python3 scraper.py "$LOCATION" "$CATEGORY" && echo "✅ Scraper done" || echo "⚠️ Scraper timed out or failed — using curated list only"
 
 if [ -f "$SCRAPED" ]; then
     echo ""
