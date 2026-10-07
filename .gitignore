@@ -11,3 +11,5 @@ results/blocklist.xlsx
 !results/scraped_*.xlsx
 !results/auto_*.xlsx
 !results/master_contacts.xlsx
+.env.local
+# run.sh is committed but reads from .env.local
