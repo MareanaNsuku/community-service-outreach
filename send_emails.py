@@ -93,6 +93,18 @@ def safe_quit(server):
         pass
 
 
+def load_blocklist(path="results/blocklist.xlsx"):
+    """Return a set of lowercased blocked emails."""
+    try:
+        b = pd.read_excel(path)
+        blocked = set(b["Email"].astype(str).str.lower().str.strip())
+        print(f"   Blocklist loaded: {len(blocked)} addresses")
+        return blocked
+    except Exception as e:
+        print(f"   Blocklist not loaded ({e}) - continuing without it")
+        return set()
+
+
 def send_emails(data_file):
     if not BREVO_SMTP_PASSWORD:
         print("ERROR: BREVO_SMTP_PASSWORD not set")
@@ -115,7 +127,13 @@ def send_emails(data_file):
         print("ERROR: No PDFs in documents/")
         return
 
-    to_send = df[df["Sent"].astype(str).str.lower() != "yes"].head(MAX_PER_RUN)
+    blocklist = load_blocklist()
+    df["_email_lc"] = df["Email"].astype(str).str.lower().str.strip()
+    to_send = df[
+        (df["Sent"].astype(str).str.lower() != "yes")
+        & (~df["_email_lc"].isin(blocklist))
+    ].head(MAX_PER_RUN)
+    df.drop(columns=["_email_lc"], inplace=True, errors="ignore")
     if to_send.empty:
         print("No unsent contacts")
         return

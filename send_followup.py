@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 from send_emails import (
     BREVO_SMTP_LOGIN, BREVO_SMTP_PASSWORD, FROM_EMAIL,
-    connect_smtp, safe_quit, DOCUMENTS_FOLDER,
+    connect_smtp, safe_quit, DOCUMENTS_FOLDER, load_blocklist,
 )
 
 SUBJECT = "Follow-up: Student Volunteer Enquiry - 40-Hour Bursary Community Service"
@@ -104,7 +104,11 @@ def send_followups(data_file):
         & (df["Replied"].str.lower() != "yes")
         & (df["Email"].astype(str).str.contains("@", na=False))
     )
+    blocklist = load_blocklist()
+    df["_email_lc"] = df["Email"].astype(str).str.lower().str.strip()
+    mask = mask & (~df["_email_lc"].isin(blocklist))
     to_send = df[mask].head(MAX_PER_RUN)
+    df.drop(columns=["_email_lc"], inplace=True, errors="ignore")
     if to_send.empty:
         print("No eligible contacts for follow-up.")
         return
