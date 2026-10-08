@@ -28,7 +28,7 @@ def safe_append(scraped_file):
         return False
 
     # 1. BACKUP master first (refuse if backup fails)
-    backup = f"{MASTER}.backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    backup = f"results/master_contacts.backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}.xlsx"
     try:
         pd.read_excel(MASTER).to_excel(backup, index=False)
         print(f"💾 Backup: {backup}")
