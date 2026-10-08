@@ -1,15 +1,32 @@
-venv/
-__pycache__/
-*.pyc
+# Secrets
 .env
-msal_token_cache.json
-o365_token/
-
-# Ignore personal files but allow scraped/auto results
-results/all_sent_emails.xlsx
-results/blocklist.xlsx
-!results/scraped_*.xlsx
-!results/auto_*.xlsx
-!results/master_contacts.xlsx
 .env.local
-# run.sh is committed but reads from .env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Temp batch files (regenerated on demand)
+inbox/
+*.tmp
+*.bak
+*~
+
+# Logs
+logs/*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
