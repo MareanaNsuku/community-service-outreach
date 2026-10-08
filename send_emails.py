@@ -129,8 +129,10 @@ def send_emails(data_file):
 
     blocklist = load_blocklist()
     df["_email_lc"] = df["Email"].astype(str).str.lower().str.strip()
+    # Filter to rows with valid emails AND not sent AND not blocked — BEFORE .head()
     to_send = df[
         (df["Sent"].astype(str).str.lower() != "yes")
+        & (df["_email_lc"].str.contains("@", na=False))
         & (~df["_email_lc"].isin(blocklist))
     ].head(MAX_PER_RUN)
     df.drop(columns=["_email_lc"], inplace=True, errors="ignore")
