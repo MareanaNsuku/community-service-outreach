@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Google Maps scraper via SerpAPI. Finds real places + tries to get emails."""
+"""Google Maps scraper via SerpAPI."""
 import os, re, sys, time
 from urllib.parse import urlparse
 import requests
