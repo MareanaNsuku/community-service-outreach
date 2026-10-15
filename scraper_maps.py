@@ -12,7 +12,9 @@ if not KEY:
 EMAIL_RE = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
 BAD_LOCAL = ["noreply","no-reply","donotreply","postmaster","webmaster",
              "abuse","feedback","press","jobs","hr","careers","vacancies",
-             "sentry","wixpress","example","test@","info@example"]
+             "sentry","wixpress","example","test@","info@example",
+             "you@email","your@email","user@example","name@example",
+             "someone@example","email@example","sample@","placeholder@"]
 BAD_DOMAINS = ["facebook.com","instagram.com","twitter.com","youtube.com",
                "linkedin.com","wikipedia.org","quora.com","reddit.com",
                "medium.com","tripadvisor","yelp","booking.com","quicket",

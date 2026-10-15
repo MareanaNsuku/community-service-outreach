@@ -18,7 +18,8 @@ OUTPUT="results/auto_${SAFE_LOCATION}_${SAFE_CATEGORY_CLEAN}.xlsx"
 echo "========================================="
 echo "STEP 1: Scraping new contacts (3-min timeout)"
 echo "========================================="
-echo "⏭️  Skipping scraper (using cached + curated contacts only)"
+# Actually run the scraper now (Maps via SerpAPI)
+python3 scraper_maps.py "$LOCATION" "$CATEGORY" || echo "ℹ️  Scraper returned nothing (OK)"
 
 if [ -f "$SCRAPED" ]; then
     echo ""
