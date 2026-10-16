@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Google Maps scraper via SerpAPI."""
+"""Google Maps scraper — STRICT Mowbray/Rondebosch only."""
 import os, re, sys, time
 from urllib.parse import urlparse
 import requests
@@ -9,25 +9,47 @@ KEY = os.getenv("SERPAPI_KEY", "")
 if not KEY:
     print("❌ SERPAPI_KEY not set"); sys.exit(0)
 
+ALLOWED_SUBURBS = ["mowbray", "rondebosch"]
+
 EMAIL_RE = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
 BAD_LOCAL = ["noreply","no-reply","donotreply","postmaster","webmaster",
              "abuse","feedback","press","jobs","hr","careers","vacancies",
              "sentry","wixpress","example","test@","info@example",
              "you@email","your@email","user@example","name@example",
-             "someone@example","email@example","sample@","placeholder@"]
+             "someone@example","email@example","sample@","placeholder@",
+             "bootstrap","fontawesome","jquery"]
 BAD_DOMAINS = ["facebook.com","instagram.com","twitter.com","youtube.com",
                "linkedin.com","wikipedia.org","quora.com","reddit.com",
                "medium.com","tripadvisor","yelp","booking.com","quicket",
                "gov.za","merriam","amazon.","ebay."]
 
-def junk(d): return any(b in d.lower() for b in BAD_DOMAINS)
+def junk_domain(d):
+    return any(b in d.lower() for b in BAD_DOMAINS)
 
 def ok_email(e):
+    """Strict — rejects version-shaped and library emails."""
     e = e.lower().strip()
     if "@" not in e or len(e) < 6 or len(e) > 70: return False
     if any(b in e for b in BAD_LOCAL): return False
+    # Reject emails where local part or domain looks like a version number
+    if re.search(r'@\d+\.\d+', e): return False       # @2.3.1
+    if re.search(r'@[\w-]+\.\d+$', e): return False   # @1.10.5
     if e.endswith((".png",".jpg",".gif",".css",".js",".svg")): return False
+    # Domain must contain a dot and TLD be 2+ chars
+    domain = e.split("@")[1]
+    if "." not in domain or len(domain.split(".")[-1]) < 2: return False
     return True
+
+def in_target_area(address):
+    if not address: return False
+    a = address.lower()
+    return any(s in a for s in ALLOWED_SUBURBS)
+
+def which_suburb(address):
+    a = address.lower()
+    if "mowbray" in a: return "Mowbray"
+    if "rondebosch" in a: return "Rondebosch"
+    return None
 
 def maps(query):
     try:
@@ -45,7 +67,7 @@ def emails_from_site(url, timeout=8):
     if not url or not url.startswith("http"): return []
     try:
         p = urlparse(url)
-        if junk(p.netloc): return []
+        if junk_domain(p.netloc): return []
     except: return []
     base = f"{p.scheme}://{p.netloc}"
     found = set()
@@ -68,37 +90,46 @@ def emails_from_site(url, timeout=8):
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: scraper_maps.py <city> <category>"); sys.exit(1)
+        print("Usage: scraper_maps.py <city_or_suburb> <category>")
+        sys.exit(1)
     city, category = sys.argv[1], sys.argv[2]
 
-    print(f"🔍 Maps: {category} in {city}")
+    print(f"🔍 Maps: {category} in {city} (strict Mowbray/Rondebosch)")
     places = maps(f"{category} {city} NPO")
-    print(f"  → {len(places)} places")
-    if not places: sys.exit(0)
+    print(f"  → {len(places)} places from Maps")
 
-    rows, seen = [], set()
+    rows, seen, dropped = [], set(), 0
     for p in places[:25]:
         name = p.get("title","").strip()
+        addr = p.get("address","")
         site = p.get("website","")
         if not name or name.lower() in seen: continue
         seen.add(name.lower())
+
+        # STRICT: address must contain mowbray or rondebosch
+        if not in_target_area(addr):
+            dropped += 1
+            continue
+
+        suburb = which_suburb(addr)
         emails = emails_from_site(site) if site else []
         if emails:
             for e in emails:
                 rows.append({
                     "Organisation Name": name,
                     "Category": category,
-                    "Location": city,
+                    "Location": suburb,
                     "Email": e,
                     "Phone": p.get("phone",""),
                     "Website": site,
                 })
-            print(f"  ✅ {name} → {emails[0]}")
+            print(f"  ✅ {name} ({suburb}) → {emails[0]}")
         else:
-            print(f"  – {name}")
+            print(f"  – {name} ({suburb}) — no email")
 
+    print(f"  dropped {dropped} places outside Mowbray/Rondebosch")
     if not rows:
-        print("  no emails"); sys.exit(0)
+        print("  no in-area emails"); sys.exit(0)
 
     os.makedirs("results", exist_ok=True)
     sc = city.replace(" ", "_")
