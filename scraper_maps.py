@@ -112,6 +112,21 @@ def main():
             continue
 
         suburb = which_suburb(addr)
+
+        # STRICT: only accept non-profit / charity / NGO types
+        types = p.get("type", "") or p.get("types", [])
+        if isinstance(types, list):
+            type_str = " ".join(str(t).lower() for t in types)
+        else:
+            type_str = str(types).lower()
+        NPO_TYPES = ["non-profit", "nonprofit", "charity", "ngo",
+                     "community", "foundation", "trust", "welfare",
+                     "volunteer", "religious", "church", "school",
+                     "education", "cultural", "social service"]
+        if not any(t in type_str for t in NPO_TYPES):
+            print(f"  ⛔ {name} — type '{type_str}' (not NPO)")
+            continue
+
         emails = emails_from_site(site) if site else []
         if emails:
             for e in emails:
