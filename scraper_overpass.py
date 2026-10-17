@@ -54,6 +54,7 @@ def ok_email(e):
     if "@" not in e or len(e) < 6 or len(e) > 70: return False
     if any(b in e for b in BAD_LOCAL): return False
     if re.search(r'@\d+\.\d+', e): return False
+    if any(c in e for c in ["&", '"', "'", "<", ">", ";", "&quot;"]): return False
     if e.endswith((".png",".jpg",".gif",".css",".js",".svg")): return False
     domain = e.split("@")[1]
     if "." not in domain or len(domain.split(".")[-1]) < 2: return False
