@@ -19,7 +19,7 @@ echo "========================================="
 echo "STEP 1: Scraping new contacts (3-min timeout)"
 echo "========================================="
 # Actually run the scraper now (Maps via SerpAPI)
-python3 scraper_maps.py "$LOCATION" "$CATEGORY" || echo "ℹ️  Scraper returned nothing (OK)"
+python3 scraper_hybrid.py "$LOCATION" "$CATEGORY" || echo "ℹ️  Scraper returned nothing (OK)"
 
 if [ -f "$SCRAPED" ]; then
     echo ""
